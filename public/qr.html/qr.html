@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SkyBridge Booking – QR Access</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f7faff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .box {
+            background: #fff;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            width: 350px;
+        }
+        img {
+            width: 250px;
+            height: 250px;
+        }
+        h1 {
+            margin-bottom: 20px;
+            color: #003c8f;
+        }
+        .link {
+            margin-top: 15px;
+            color: #0066cc;
+            text-decoration: none;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="box">
+        <h1>Scan to Book Table</h1>
+        <img src="https://api.qrserver.com/v1/create-qr-code/?size=350x350&data=https://skybridge-booking-app.onrender.com" alt="QR Code">
+        <a class="link" href="https://skybridge-booking-app.onrender.com" target="_blank">
+            https://skybridge-booking-app.onrender.com
+        </a>
+    </div>
+
+</body>
+</html>
