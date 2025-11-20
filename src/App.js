@@ -1,14 +1,10 @@
-// App.js — Version A (Exact UI + Behavior)
-// Fully corrected, UPI-fixed, desktop-friendly, QR working.
-
 import React, { useMemo, useState, useEffect } from "react";
 
 // ---------------- CONFIG ----------------
 const SHEET_ENDPOINT =
-  "https://script.google.com/macros/s/AKfycbx9CRi6Rr57yUbGRxjDlIMaXEFWaQbn8-tquKMtU7cW2YXA06pfvGiRdNrA09feU2XL/exec";
+  "https://script.google.com/macros/s/AKfycbyh6f3IZfum0kce0OoLnYYilNmEjY4Jh6s2WsaQYMggpCFmY39whiEqgeaoADk7QzU/exec";
 
-const PROXY_PREFIX =
-  "https://google-proxy-0t98.onrender.com/proxy?url=";
+const PROXY_PREFIX = "https://google-proxy-0t98.onrender.com/proxy?url=";
 
 const UPI_ID = "kirankumarreddy172003@oksbi";
 const DEFAULT_BOOKING_FEE = 50;
@@ -17,27 +13,97 @@ const TABLE_CAPACITY = 4;
 const DEMO_MODE = false;
 // ----------------------------------------
 
+// ---------------- MENU ITEMS ----------------
 const menuItems = [
-  { id: "biriyani", name: "Basha bhai Chicken Biryani", price: 150, img: "/images/biryani_feast2.jpg.png" },
-  { id: "lollipop", name: "Chicken Lollipop", price: 150, img: "/images/cl.jpg" },
-  { id: "ragi", name: "Ragi mudde", price: 100, img: "/images/ragimudde.jpg.jpg" },
-  { id: "vegfr", name: "Veg Fried Rice", price: 80, img: "/images/veggfriedrice.jpg" },
-  { id: "chickfr", name: "Chicken Fried Rice", price: 100, img: "/images/chickenfriedrice.jpeg" },
-  { id: "noodles", name: "Chicken Noodles", price: 100, img: "/images/cn.png" },
-  { id: "tea", name: "Tea", price: 30, img: "/images/tea.png" },
-  { id: "ice", name: "Ice Cream", price: 120, img: "/images/icecream.jpg" }, // fixed
-  { id: "cake", name: "Cake Items", price: 120, img: "/images/cake.png" },
-  { id: "bulking", name: "Bulking juice", price: 120, img: "/images/bulkingjuice.png" },
-  { id: "dosa", name: "Dosa with chicken curry", price: 100, img: "/images/dosa.png" },
+  {
+    id: "biriyani",
+    name: "Basha bhai Chicken Biryani",
+    price: 150,
+    img: "/images/biryani_feast2.jpg.png",
+    video: "https://youtu.be/v6QtjD2udYM?si=Uz0ZjAMJBd_rFuaJ",
+  },
+  {
+    id: "lollipop",
+    name: "Chicken Lollipop",
+    price: 150,
+    img: "/images/cl.jpg",
+    video: "https://youtube.com/shorts/3Av-gsdQrxQ?si=pAQXt38IOJeAxFb9",
+  },
+  {
+    id: "ragi",
+    name: "Ragi mudde",
+    price: 100,
+    img: "/images/ragimudde.jpg.jpg",
+    video: "https://youtube.com/shorts/6xij1aIVLp0?si=YfoDIpXdPswDfPCS",
+  },
+  {
+    id: "vegfr",
+    name: "Veg Fried Rice",
+    price: 80,
+    img: "/images/veggfriedrice.jpg",
+    video: "https://youtube.com/shorts/UwyVWj4Zzcs?si=vQO8yT7U9G2ojAUH",
+  },
+  {
+    id: "chickfr",
+    name: "Chicken Fried Rice",
+    price: 100,
+    img: "/images/chickenfriedrice.jpeg",
+    video: "https://youtube.com/shorts/tZqMd5QC-Js?si=liaz-N3yvWRRq8N_",
+  },
+  {
+    id: "noodles",
+    name: "Chicken Noodles",
+    price: 100,
+    img: "/images/cn.png",
+    video: "https://youtube.com/shorts/pm_171rJKXo?si=tM434U_0XXkif6Pr",
+  },
+  {
+    id: "tea",
+    name: "Tea",
+    price: 30,
+    img: "/images/tea.png",
+    video: "https://youtube.com/shorts/Zpi8HkTNBEo?si=fI0R5FwqGjqiosvp",
+  },
+  {
+    id: "ice",
+    name: "Ice Cream",
+    price: 120,
+    img: "/images/icecream.jpg",
+    video: "https://youtube.com/shorts/8dO1u5uOI7c?si=G-IUUg88Qu7X2A2Z",
+  },
+  {
+    id: "cake",
+    name: "Cake Items",
+    price: 120,
+    img: "/images/cake.png",
+    video: "https://youtube.com/shorts/CX0MG7_n20g?si=kbPiVjgLGmSTtiOg",
+  },
+  {
+    id: "bulking",
+    name: "Bulking juice",
+    price: 120,
+    img: "/images/bulkingjuice.png",
+    video: "https://youtube.com/shorts/hr8KOIplFGA?si=fAlAYh07TOk9Lls0",
+  },
+  {
+    id: "dosa",
+    name: "Dosa with chicken curry",
+    price: 100,
+    img: "/images/dosa.png",
+    video: "https://youtube.com/shorts/riMcM2xY02E?si=ossIjbPo4st-0fLo",
+  },
 ];
 
 // ---------------- Helpers ----------------
 
+// Existing slots (for TABLE bookings – 4pm to 11:30pm)
 function generateTimeSlots() {
   const slots = [];
   for (let hour = 16; hour <= 23; hour++) {
     for (let min of [0, 30]) {
-      slots.push(`${String(hour).padStart(2, "0")}:${String(min).padStart(2, "0")}`);
+      slots.push(
+        `${String(hour).padStart(2, "0")}:${String(min).padStart(2, "0")}`
+      );
     }
   }
   return slots;
@@ -62,8 +128,10 @@ async function proxyFetch(url, options = {}) {
 // ============================================================
 
 export default function App() {
-  const [page, setPage] = useState("menu");
+  const [page, setPage] = useState("menu"); // home | menu | orderType | booking | contact | confirmation
+
   const [form, setForm] = useState({
+    orderType: "table", // "pickup" | "delivery" | "table"
     name: "",
     phone: "",
     date: "",
@@ -71,7 +139,10 @@ export default function App() {
     table: "",
     guests: 1,
     items: [],
+    address: "",
+    location: "",
   });
+
   const [errors, setErrors] = useState({ name: "", phone: "" });
   const [cart, setCart] = useState({});
   const [sending, setSending] = useState(false);
@@ -82,6 +153,10 @@ export default function App() {
   const [totalBump, setTotalBump] = useState(0);
 
   const slots = useMemo(() => generateTimeSlots(), []);
+
+  const isPickup = form.orderType === "pickup";
+  const isDelivery = form.orderType === "delivery";
+  const isTable = form.orderType === "table";
 
   // auto hide demo banner
   useEffect(() => {
@@ -97,6 +172,7 @@ export default function App() {
       const item = menuItems.find((m) => m.id === id);
       return acc + item.price * (cart[id] || 0);
     }, 0);
+    // always at least booking fee if nothing in cart
     return total || DEFAULT_BOOKING_FEE;
   }
   const total = getCartTotal();
@@ -120,7 +196,7 @@ export default function App() {
     });
   }
 
-  // fetch table availability
+  // fetch table availability (only for table bookings)
   async function fetchAvailability(date, slot) {
     if (!date || !slot) return;
 
@@ -157,10 +233,85 @@ export default function App() {
   function markBookingPaidLocal() {
     if (!bookingData) return;
     setBookingData({ ...bookingData, payment_status: "Paid" });
-    setAvailabilityMsg("Marked as Paid locally.");
+    setAvailabilityMsg("✔ Thank you! Payment received.");
   }
 
-  // handle booking
+  // ------------- ORDER TYPE SELECTION HANDLERS -------------
+
+  function selectPickup() {
+    setTableStatus(null);
+    setForm((p) => ({
+      ...p,
+      orderType: "pickup",
+      date: "",
+      slot: "",
+      table: "",
+      guests: 1,
+      address: "",
+      location: "",
+    }));
+    setPage("booking");
+  }
+
+  function selectDelivery() {
+    setTableStatus(null);
+    setForm((p) => ({
+      ...p,
+      orderType: "delivery",
+      date: "",
+      slot: "",
+      table: "",
+      guests: 1,
+      address: "",
+      location: "",
+    }));
+    setPage("booking");
+  }
+
+  function selectTableBooking() {
+    setForm((p) => ({
+      ...p,
+      orderType: "table",
+      address: "",
+      location: "",
+    }));
+    setPage("booking");
+  }
+
+  // format date as yyyy-mm-dd (type="date" already gives this, but kept for safety)
+  function formatDate(d) {
+    if (!d) return "";
+    const parts = d.split("-");
+    if (parts.length === 3) {
+      const [yyyy, mm, dd] = parts;
+      return `${yyyy}-${mm}-${dd}`;
+    }
+    return d;
+  }
+
+  // GPS auto-fill for delivery location
+  function autoFillGPS() {
+    if (!navigator.geolocation) {
+      setAvailabilityMsg("GPS is not supported on this device.");
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        const gps = `${latitude.toFixed(6)},${longitude.toFixed(6)}`;
+        setForm((p) => ({ ...p, location: gps }));
+        setAvailabilityMsg("📍 GPS location updated.");
+      },
+      (err) => {
+        console.error(err);
+        setAvailabilityMsg("Unable to fetch GPS location.");
+      },
+      { enableHighAccuracy: true }
+    );
+  }
+
+  // handle booking submit – behaves differently per orderType
   async function handleBookingSubmit(e) {
     e.preventDefault();
     setAvailabilityMsg("");
@@ -175,19 +326,43 @@ export default function App() {
 
     if (!nameOk || !phoneOk) return;
 
-    if (!form.date || !form.slot || !form.table) {
-      setAvailabilityMsg("Please fill all required fields.");
-      return;
+    // specific required fields based on orderType
+    if (isTable) {
+      if (!form.date || !form.slot || !form.table) {
+        setAvailabilityMsg("Please fill all required fields.");
+        return;
+      }
+    } else if (isPickup) {
+      if (!form.date) {
+        setAvailabilityMsg("Please select date for pickup.");
+        return;
+      }
+    } else if (isDelivery) {
+      if (!form.address || !form.location) {
+        setAvailabilityMsg(
+          "Please enter full delivery address and your current location."
+        );
+        return;
+      }
     }
 
     setSending(true);
 
+    // ✅ Correct payload for Apps Script
     const payload = {
       action: "book",
-      ...form,
+      orderType: form.orderType,
+      name: form.name,
+      phone: form.phone,
+      date: isPickup || isTable ? formatDate(form.date) : "",
+      slot: isTable ? form.slot : "",
+      table: isTable ? form.table : "",
+      guests: isTable ? form.guests : "",
+      address: isDelivery ? form.address : "",
+      location: isDelivery ? form.location : "",
+      items: form.items || [],
       amount: total,
       payment_status: "Pending",
-      cart,
     };
 
     try {
@@ -214,12 +389,13 @@ export default function App() {
 
         // mobile only → open UPI app
         if (/Android|iPhone/i.test(navigator.userAgent)) {
-          const upiLink =
-            `upi://pay?pa=${encodeURIComponent(UPI_ID)}` +
-            `&pn=${encodeURIComponent("Open SkyBridge")}` +
-            `&am=${encodeURIComponent(total)}` +
-            `&cu=INR` +
-            `&tn=${encodeURIComponent("Table Booking")}`;
+          const upiLink = `upi://pay?pa=${encodeURIComponent(
+            UPI_ID
+          )}&pn=${encodeURIComponent(
+            "Open SkyBridge"
+          )}&am=${encodeURIComponent(total)}&cu=INR&tn=${encodeURIComponent(
+            "Table Booking"
+          )}`;
           window.location.href = upiLink;
         }
 
@@ -292,7 +468,7 @@ export default function App() {
             <div style={{ fontSize: 12, marginTop: 6 }}>
               {status === "available" && `✅ ${remaining} seats`}
               {status === "partial" && `⚠️ ${remaining} seats`}
-              {status === "full" && `🚫 Full`}
+              {status === "full" && "🚫 Full"}
             </div>
             {form.table === String(i) && (
               <div
@@ -328,6 +504,13 @@ export default function App() {
         {tiles}
       </div>
     );
+  }
+
+  // Helper to show order type text on confirmation
+  function getOrderTypeLabel(type) {
+    if (type === "pickup") return "Ready to Eat in Front of Hotel";
+    if (type === "delivery") return "Home Delivery";
+    return "Book your Table";
   }
 
   // ============================================================
@@ -392,7 +575,7 @@ export default function App() {
           <button onClick={() => setPage("menu")} className="tabBtn">
             Menu
           </button>
-          <button onClick={() => setPage("booking")} className="tabBtn">
+          <button onClick={selectTableBooking} className="tabBtn">
             Book Table
           </button>
           <button onClick={() => setPage("contact")} className="tabBtn">
@@ -415,7 +598,7 @@ export default function App() {
             Reserve your table, pre-order your favourites.
           </p>
           <button
-            onClick={() => setPage("booking")}
+            onClick={selectTableBooking}
             style={{
               background: "#ffb400",
               padding: "10px 16px",
@@ -425,7 +608,7 @@ export default function App() {
               border: "none",
             }}
           >
-            Book a Table
+            Book your Table
           </button>
         </div>
       )}
@@ -495,8 +678,35 @@ export default function App() {
                       <div style={{ fontSize: 20, fontWeight: 700 }}>
                         {m.name}
                       </div>
-                      <div style={{ marginTop: 6, opacity: 0.9 }}>
-                        ₹{m.price}
+                      <div
+                        style={{
+                          marginTop: 6,
+                          opacity: 0.9,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                        }}
+                      >
+                        <span>₹{m.price}</span>
+                        {m.video && (
+                          <a
+                            href={m.video}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              background: "#ffb400",
+                              padding: "4px 8px",
+                              borderRadius: 8,
+                              fontSize: 11,
+                              fontWeight: 700,
+                              color: "#000",
+                              textDecoration: "none",
+                              boxShadow: "0 3px 8px rgba(0,0,0,0.25)",
+                            }}
+                          >
+                            ▶ Watch Video
+                          </a>
+                        )}
                       </div>
                     </div>
 
@@ -545,11 +755,100 @@ export default function App() {
         </div>
       )}
 
-      {/* BOOKING PAGE */}
+      {/* ORDER TYPE PAGE */}
+      {page === "orderType" && (
+        <div
+          style={{
+            padding: "40px 16px",
+            maxWidth: 900,
+            margin: "0 auto",
+          }}
+        >
+          <h2 style={{ textAlign: "center", color: "#0366a6" }}>
+            How would you like your order?
+          </h2>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+              gap: 20,
+              marginTop: 30,
+            }}
+          >
+            {/* OPTION 1: Ready to Eat in Front of Hotel */}
+            <div
+              onClick={selectPickup}
+              style={{
+                cursor: "pointer",
+                background: "#fff",
+                borderRadius: 12,
+                padding: 20,
+                boxShadow: "0 8px 18px rgba(0,0,0,0.08)",
+                border: "2px solid #ffb400",
+              }}
+            >
+              <h3 style={{ margin: 0, color: "#ff9800" }}>
+                Ready to Eat in Front of Hotel
+              </h3>
+              <p style={{ marginTop: 10, color: "#555" }}>
+                Order food and enjoy it sitting or standing in front of the
+                hotel. No table reservation needed.
+              </p>
+            </div>
+
+            {/* OPTION 2: Home Delivery */}
+            <div
+              onClick={selectDelivery}
+              style={{
+                cursor: "pointer",
+                background: "#fff",
+                borderRadius: 12,
+                padding: 20,
+                boxShadow: "0 8px 18px rgba(0,0,0,0.08)",
+              }}
+            >
+              <h3 style={{ margin: 0, color: "#2196f3" }}>Home Delivery</h3>
+              <p style={{ marginTop: 10, color: "#555", lineHeight: 1.6 }}>
+                If your order value is below ₹100, a delivery charge of ₹20–₹35
+                will apply.
+                <br />
+                If your order value is ₹100 or above, a delivery charge of ₹1–₹10
+                will apply.
+                <br />
+                These charges apply for deliveries within 0–1 km from 2nd Main
+                Road, Aswath Nagar, Marathahalli.
+              </p>
+            </div>
+
+            {/* OPTION 3: Book your Table */}
+            <div
+              onClick={selectTableBooking}
+              style={{
+                cursor: "pointer",
+                background: "#fff",
+                borderRadius: 12,
+                padding: 20,
+                boxShadow: "0 8px 18px rgba(0,0,0,0.08)",
+              }}
+            >
+              <h3 style={{ margin: 0, color: "#4caf50" }}>Book your Table</h3>
+              <p style={{ marginTop: 10, color: "#555" }}>
+                Reserve a table inside the restaurant, choose time slot and
+                pre-order your favourites.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* BOOKING PAGE (3 MODES INSIDE) */}
       {page === "booking" && (
         <div style={{ padding: "30px 16px", maxWidth: 720, margin: "0 auto" }}>
           <h2 style={{ textAlign: "center", color: "#0366a6" }}>
-            Book Your Table
+            {isPickup && "Ready to Eat in Front of Hotel"}
+            {isDelivery && "Home Delivery"}
+            {isTable && "Book Your Table"}
           </h2>
 
           {/* FORM */}
@@ -626,9 +925,9 @@ export default function App() {
               </div>
             )}
 
-            {/* DATE + SLOT */}
-            <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
-              <div style={{ flex: 1 }}>
+            {/* DATE (Pickup + Table) */}
+            {(isPickup || isTable) && (
+              <div style={{ marginTop: 10 }}>
                 <label>📅 Select Date</label>
                 <input
                   required
@@ -636,7 +935,7 @@ export default function App() {
                   value={form.date}
                   onChange={(e) => {
                     setForm({ ...form, date: e.target.value });
-                    setTableStatus(null);
+                    if (isTable) setTableStatus(null);
                   }}
                   className="input"
                   style={{
@@ -648,18 +947,79 @@ export default function App() {
                   }}
                 />
               </div>
+            )}
 
-              <div style={{ flex: 1 }}>
-                <label>⏰ Select Time Slot</label>
+            {/* TABLE BOOKING ONLY FIELDS */}
+            {isTable && (
+              <>
+                <div style={{ marginTop: 10 }}>
+                  <label>⏰ Select Time Slot</label>
+                  <select
+                    required
+                    value={form.slot}
+                    onChange={async (e) => {
+                      const val = e.target.value;
+                      setForm((p) => ({ ...p, slot: val, table: "" }));
+                      setTableStatus(null);
+                      await fetchAvailability(form.date, val);
+                    }}
+                    className="input"
+                    style={{
+                      width: "100%",
+                      padding: 10,
+                      marginTop: 6,
+                      borderRadius: 8,
+                      border: "1px solid #e6e6e6",
+                    }}
+                  >
+                    <option value="">Select Slot</option>
+                    {slots.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Guests */}
+                <label style={{ marginTop: 10 }}>
+                  👥 Number of Guests (Max {TABLE_CAPACITY})
+                </label>
+                <input
+                  required
+                  type="number"
+                  min={1}
+                  max={TABLE_CAPACITY}
+                  value={form.guests}
+                  onChange={(e) =>
+                    setForm({ ...form, guests: Number(e.target.value) })
+                  }
+                  className="input"
+                  style={{
+                    width: "100%",
+                    padding: 10,
+                    marginTop: 6,
+                    borderRadius: 8,
+                    border: "1px solid #e6e6e6",
+                  }}
+                />
+
+                {/* Table Selection */}
+                <div style={{ marginTop: 12 }}>
+                  <div style={{ fontWeight: 700, marginBottom: 8 }}>
+                    🪑 Select Table
+                  </div>
+                  {renderTableGrid()}
+                </div>
+
+                {/* Confirm Table */}
+                <label>🪑 Confirm Table Number</label>
                 <select
                   required
-                  value={form.slot}
-                  onChange={async (e) => {
-                    const val = e.target.value;
-                    setForm((p) => ({ ...p, slot: val, table: "" }));
-                    setTableStatus(null);
-                    await fetchAvailability(form.date, val);
-                  }}
+                  value={form.table}
+                  onChange={(e) =>
+                    setForm({ ...form, table: e.target.value })
+                  }
                   className="input"
                   style={{
                     width: "100%",
@@ -669,81 +1029,86 @@ export default function App() {
                     border: "1px solid #e6e6e6",
                   }}
                 >
-                  <option value="">Select Slot</option>
-                  {slots.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
+                  <option value="">Select Table</option>
+                  {Array.from({ length: TABLE_COUNT }, (_, i) => i + 1).map(
+                    (n) => {
+                      const booked = tableStatus ? Number(tableStatus[n] || 0) : 0;
+                      const remaining = Math.max(0, TABLE_CAPACITY - booked);
+                      if (booked >= TABLE_CAPACITY) return null;
+                      return (
+                        <option key={n} value={n}>
+                          Table {n} — {remaining} seats left
+                        </option>
+                      );
+                    }
+                  )}
                 </select>
-              </div>
-            </div>
+              </>
+            )}
 
-            {/* Guests */}
-            <label>👥 Number of Guests (Max {TABLE_CAPACITY})</label>
-            <input
-              required
-              type="number"
-              min={1}
-              max={TABLE_CAPACITY}
-              value={form.guests}
-              onChange={(e) =>
-                setForm({ ...form, guests: Number(e.target.value) })
-              }
-              className="input"
-              style={{
-                width: "100%",
-                padding: 10,
-                marginTop: 6,
-                borderRadius: 8,
-                border: "1px solid #e6e6e6",
-              }}
-            />
+            {/* DELIVERY ONLY FIELDS */}
+            {isDelivery && (
+              <>
+                <div style={{ marginTop: 10 }}>
+                  <label>🏠 Full Delivery Address</label>
+                  <textarea
+                    required
+                    placeholder="Flat / House No., Street, Area, City, Pincode"
+                    value={form.address}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, address: e.target.value }))
+                    }
+                    rows={3}
+                    style={{
+                      width: "100%",
+                      padding: 10,
+                      marginTop: 6,
+                      borderRadius: 8,
+                      border: "1px solid #e6e6e6",
+                      resize: "vertical",
+                    }}
+                  />
+                </div>
 
-            {/* Table Selection */}
-            <div style={{ marginTop: 12 }}>
-              <div style={{ fontWeight: 700, marginBottom: 8 }}>
-                🪑 Select Table
-              </div>
-              {renderTableGrid()}
-            </div>
-
-            {/* Confirm Table */}
-            <label>🪑 Confirm Table Number</label>
-            <select
-              required
-              value={form.table}
-              onChange={(e) =>
-                setForm({ ...form, table: e.target.value })
-              }
-              className="input"
-              style={{
-                width: "100%",
-                padding: 10,
-                marginTop: 6,
-                borderRadius: 8,
-                border: "1px solid #e6e6e6",
-              }}
-            >
-              <option value="">Select Table</option>
-              {Array.from({ length: TABLE_COUNT }, (_, i) => i + 1).map(
-                (n) => {
-                  const booked = tableStatus
-                    ? Number(tableStatus[n] || 0)
-                    : 0;
-                  const remaining = Math.max(
-                    0,
-                    TABLE_CAPACITY - booked
-                  );
-                  if (booked >= TABLE_CAPACITY) return null;
-                  return (
-                    <option key={n} value={n}>
-                      Table {n} — {remaining} seats left
-                    </option>
-                  );
-                }
-              )}
-            </select>
+                <div style={{ marginTop: 10 }}>
+                  <label>📍 Your Current Location</label>
+                  <input
+                    required
+                    placeholder="Nearby location / landmark (example: near SBI ATM)"
+                    value={form.location}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, location: e.target.value }))
+                    }
+                    style={{
+                      width: "100%",
+                      padding: 10,
+                      marginTop: 6,
+                      borderRadius: 8,
+                      border: "1px solid #e6e6e6",
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={autoFillGPS}
+                    style={{
+                      marginTop: 6,
+                      background: "#2196f3",
+                      color: "#fff",
+                      border: "none",
+                      padding: "8px 12px",
+                      borderRadius: 6,
+                      cursor: "pointer",
+                      fontWeight: 700,
+                    }}
+                  >
+                    📍 Auto-Fill GPS Location
+                  </button>
+                  <div style={{ fontSize: 12, marginTop: 4, color: "#555" }}>
+                    We’ll reach you faster using live GPS coordinates.
+                  </div>
+                </div>
+              </>
+            )}
 
             {/* Pre-Ordered Items */}
             <div style={{ marginTop: 16 }}>
@@ -751,8 +1116,7 @@ export default function App() {
               <div style={{ marginTop: 8 }}>
                 {Object.keys(cart).length === 0 && (
                   <div style={{ color: "#555" }}>
-                    No pre-orders selected. Total: ₹
-                    {DEFAULT_BOOKING_FEE}
+                    No pre-orders selected. Total: ₹{DEFAULT_BOOKING_FEE}
                   </div>
                 )}
                 {Object.keys(cart).map((id) => {
@@ -828,9 +1192,7 @@ export default function App() {
               }}
             >
               <div>
-                <div style={{ color: "#666" }}>
-                  Total Amount to Pay Now
-                </div>
+                <div style={{ color: "#666" }}>Total Amount to Pay Now</div>
                 <div
                   key={totalBump}
                   style={{
@@ -860,12 +1222,12 @@ export default function App() {
             </div>
 
             <style>{`
-            @keyframes bump {
-              0% { transform: scale(1); }
-              30% { transform: scale(1.15); }
-              100% { transform: scale(1); }
-            }
-          `}</style>
+              @keyframes bump {
+                0% { transform: scale(1); }
+                30% { transform: scale(1.15); }
+                100% { transform: scale(1); }
+              }
+            `}</style>
           </form>
         </div>
       )}
@@ -900,16 +1262,18 @@ export default function App() {
             style={{
               fontSize: 28,
               color:
-                bookingData.payment_status === "Paid"
-                  ? "#28a745"
-                  : "#0366a6",
+                bookingData.payment_status === "Paid" ? "#28a745" : "#0366a6",
             }}
           >
             🎉 Booking Saved
           </h2>
 
-          <p style={{ marginTop: 10, fontSize: 18 }}>
-            Your reservation has been recorded.
+          <p style={{ marginTop: 6, fontSize: 18 }}>
+            {getOrderTypeLabel(bookingData.orderType)}
+          </p>
+
+          <p style={{ marginTop: 4, fontSize: 16 }}>
+            Your reservation / order has been recorded.
           </p>
 
           {/* Booking card */}
@@ -927,28 +1291,51 @@ export default function App() {
               <b>Name:</b> {bookingData.name}
             </p>
             <p>
-              <b>Date & Time:</b> {bookingData.date} at{" "}
-              {bookingData.slot}
+              <b>Phone:</b> {bookingData.phone}
             </p>
             <p>
-              <b>Table:</b> {bookingData.table}
+              <b>Order Type:</b> {getOrderTypeLabel(bookingData.orderType)}
             </p>
-            <p>
-              <b>Guests:</b> {bookingData.guests}
-            </p>
+
+            {bookingData.orderType === "table" && (
+              <>
+                <p>
+                  <b>Date & Time:</b> {bookingData.date} at {bookingData.slot}
+                </p>
+                <p>
+                  <b>Table:</b> {bookingData.table}
+                </p>
+                <p>
+                  <b>Guests:</b> {bookingData.guests}
+                </p>
+              </>
+            )}
+
+            {bookingData.orderType === "pickup" && (
+              <p>
+                <b>Pickup Date:</b> {bookingData.date}
+              </p>
+            )}
+
+            {bookingData.orderType === "delivery" && (
+              <>
+                <p>
+                  <b>Delivery Address:</b> {bookingData.address}
+                </p>
+                <p>
+                  <b>Your Current Location:</b> {bookingData.location}
+                </p>
+              </>
+            )}
 
             <p>
               <b>Pre-ordered Items:</b>
             </p>
             <ul>
               {bookingData.items && bookingData.items.length > 0 ? (
-                bookingData.items.map((it, idx) => (
-                  <li key={idx}>{it}</li>
-                ))
+                bookingData.items.map((it, idx) => <li key={idx}>{it}</li>)
               ) : (
-                <li>
-                  (No food — only ₹{DEFAULT_BOOKING_FEE} booking fee)
-                </li>
+                <li>(No food — only ₹{DEFAULT_BOOKING_FEE} booking fee)</li>
               )}
             </ul>
 
@@ -1020,12 +1407,13 @@ export default function App() {
             <div style={{ marginTop: 12 }}>
               {bookingData.payment_status === "Paid" ? (
                 <p style={{ color: "#28a745", fontWeight: 700 }}>
-                  ✔ Payment received — booking is confirmed!
+                  ✔ Thank you! Payment received.
                 </p>
               ) : (
                 <>
                   <p style={{ color: "#b00020", fontWeight: 700 }}>
-                    ⚠ Please complete your UPI payment.
+                    ⚠ Please complete your UPI payment. After payment, tap the
+                    button below.
                   </p>
                   <button
                     onClick={markBookingPaidLocal}
@@ -1071,7 +1459,7 @@ export default function App() {
       {/* Floating Cart */}
       {Object.keys(cart).length > 0 && page === "menu" && (
         <button
-          onClick={() => setPage("booking")}
+          onClick={() => setPage("orderType")}
           style={{
             position: "fixed",
             left: "50%",
@@ -1114,4 +1502,3 @@ style.innerHTML = `
 }
 `;
 document.head.appendChild(style);
-
