@@ -1,13 +1,30 @@
 import React, { useMemo, useState, useEffect } from "react";
+import { db } from "./firebase";
+import { collection, addDoc, getDocs } from "firebase/firestore";
+
+// Add New Order to Firebase
+const addOrder = async (shopId, order) => {
+  try {
+    await addDoc(collection(db, `shops/${shopId}/orders`), {
+      ...order,
+      timestamp: new Date(),
+    });
+    console.log("Order added successfully to Firestore!");
+  } catch (error) {
+    console.error("Error adding order to Firestore: ", error);
+  }
+};
 
 // ---------------- CONFIG ----------------
 const SHEET_ENDPOINT =
-  "https://script.google.com/macros/s/AKfycbyh6f3IZfum0kce0OoLnYYilNmEjY4Jh6s2WsaQYMggpCFmY39whiEqgeaoADk7QzU/exec";
+  "https://script.google.com/macros/s/AKfycbxZZOLhPk4Fl3Rv9r3PcimklRkz23csWWjWdBKb0tztA71HuwOe_TJSnPi2h1CUiFPZ/exec";
 
 const PROXY_PREFIX = "https://google-proxy-0t98.onrender.com/proxy?url=";
 
 const UPI_ID = "kirankumarreddy172003@oksbi";
-const DEFAULT_BOOKING_FEE = 50;
+const RAZORPAY_KEY_ID = "rzp_test_RiSAkhDLSdTwb4"; // ⬅️ REPLACE with your REAL Razorpay Test Key ID
+
+const DEFAULT_BOOKING_FEE = 1;
 const TABLE_COUNT = 15;
 const TABLE_CAPACITY = 4;
 const DEMO_MODE = false;
@@ -32,7 +49,7 @@ const menuItems = [
   {
     id: "ragi",
     name: "Ragi mudde",
-    price: 100,
+    price: 1,
     img: "/images/ragimudde.jpg.jpg",
     video: "https://youtube.com/shorts/6xij1aIVLp0?si=YfoDIpXdPswDfPCS",
   },
@@ -140,7 +157,7 @@ export default function App() {
     guests: 1,
     items: [],
     address: "",
-    location: "",
+    location: "", // manual or GPS
   });
 
   const [errors, setErrors] = useState({ name: "", phone: "" });
@@ -151,6 +168,7 @@ export default function App() {
   const [tableStatus, setTableStatus] = useState(null);
   const [demoBanner, setDemoBanner] = useState(DEMO_MODE);
   const [totalBump, setTotalBump] = useState(0);
+  const [paying, setPaying] = useState(false);
 
   const slots = useMemo(() => generateTimeSlots(), []);
 
@@ -229,7 +247,7 @@ export default function App() {
   const validateName = (v) => /^[A-Za-z ]+$/.test(v);
   const validatePhone = (v) => /^\d{10}$/.test(v);
 
-  // mark payment as paid locally
+  // mark payment as paid locally (manual fallback)
   function markBookingPaidLocal() {
     if (!bookingData) return;
     setBookingData({ ...bookingData, payment_status: "Paid" });
@@ -278,40 +296,38 @@ export default function App() {
     setPage("booking");
   }
 
-  // format date as yyyy-mm-dd (type="date" already gives this, but kept for safety)
+  // ----------- Date formatter (yyyy-mm-dd) -------------
   function formatDate(d) {
     if (!d) return "";
     const parts = d.split("-");
     if (parts.length === 3) {
-      const [yyyy, mm, dd] = parts;
+      const [yyyy, mm, dd] = parts; // input already yyyy-mm-dd
       return `${yyyy}-${mm}-${dd}`;
     }
     return d;
   }
 
-  // GPS auto-fill for delivery location
-  function autoFillGPS() {
+  // ----------- Hybrid GPS: auto-fill current location -----
+  function handleUseMyLocation(e) {
+    e.preventDefault();
     if (!navigator.geolocation) {
-      setAvailabilityMsg("GPS is not supported on this device.");
+      alert("Location not supported on this device.");
       return;
     }
-
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const { latitude, longitude } = pos.coords;
-        const gps = `${latitude.toFixed(6)},${longitude.toFixed(6)}`;
-        setForm((p) => ({ ...p, location: gps }));
-        setAvailabilityMsg("📍 GPS location updated.");
+        const loc = `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+        setForm((p) => ({ ...p, location: loc }));
       },
       (err) => {
         console.error(err);
-        setAvailabilityMsg("Unable to fetch GPS location.");
-      },
-      { enableHighAccuracy: true }
+        alert("Unable to fetch location. Please type manually.");
+      }
     );
   }
 
-  // handle booking submit – behaves differently per orderType
+  // handle booking submit – now ONLY prepares bookingData, payment done via Razorpay
   async function handleBookingSubmit(e) {
     e.preventDefault();
     setAvailabilityMsg("");
@@ -346,11 +362,8 @@ export default function App() {
       }
     }
 
-    setSending(true);
-
-    // ✅ Correct payload for Apps Script
-    const payload = {
-      action: "book",
+    // Prepare booking data (not yet saved to sheet)
+    const prepared = {
       orderType: form.orderType,
       name: form.name,
       phone: form.phone,
@@ -365,50 +378,107 @@ export default function App() {
       payment_status: "Pending",
     };
 
-    try {
-      let result;
+    setBookingData(prepared);
+    setPage("confirmation");
+  }
 
-      if (DEMO_MODE) {
-        await new Promise((r) => setTimeout(r, 800));
-        result = { result: "success", data: payload };
-      } else {
-        const response = await proxyFetch(SHEET_ENDPOINT, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
+  // ----------- Razorpay payment + save to Google Sheet & Firestore ----------
+  async function startOnlinePayment() {
+    if (!bookingData) return;
 
-        if (!response.ok) throw new Error(`Status ${response.status}`);
-
-        result = await response.json();
-      }
-
-      if (result.result === "success") {
-        const data = result.data || payload;
-        setBookingData(data);
-
-        // mobile only → open UPI app
-        if (/Android|iPhone/i.test(navigator.userAgent)) {
-          const upiLink = `upi://pay?pa=${encodeURIComponent(
-            UPI_ID
-          )}&pn=${encodeURIComponent(
-            "Open SkyBridge"
-          )}&am=${encodeURIComponent(total)}&cu=INR&tn=${encodeURIComponent(
-            "Table Booking"
-          )}`;
-          window.location.href = upiLink;
-        }
-
-        setPage("confirmation");
-      } else {
-        setAvailabilityMsg(result.message || "Server error.");
-      }
-    } catch (err) {
-      console.error(err);
-      setAvailabilityMsg("Internal connection error.");
+    if (!window.Razorpay) {
+      alert("Payment system not loaded. Please refresh the page or try again.");
+      return;
     }
 
-    setSending(false);
+    setPaying(true);
+
+    const options = {
+      key: RAZORPAY_KEY_ID,
+      amount: bookingData.amount * 100, // in paise
+      currency: "INR",
+      name: "Open SkyBridge",
+      description: getOrderTypeLabel(bookingData.orderType),
+      prefill: {
+        name: bookingData.name,
+        contact: bookingData.phone,
+      },
+      handler: async function (response) {
+        // Payment success
+        try {
+          const payload = {
+            action: "book",
+            ...bookingData,
+            payment_status: "Paid",
+            razorpay_payment_id: response.razorpay_payment_id || "",
+          };
+
+          // 1️⃣ Save to Google Sheet (existing logic)
+          if (!DEMO_MODE) {
+            const res = await proxyFetch(SHEET_ENDPOINT, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload),
+            });
+
+            const result = await res.json();
+            if (result.result !== "success") {
+              console.error(result);
+              alert(
+                "Payment received, but we could not save booking in sheet. Please contact the restaurant."
+              );
+            }
+          }
+
+          // 2️⃣ Save Order to Firestore
+          try {
+            const orderData = {
+              customerName: bookingData.name,
+              phone: bookingData.phone,
+              orderType: bookingData.orderType,
+              date: bookingData.date,
+              slot: bookingData.slot,
+              table: bookingData.table,
+              guests: bookingData.guests,
+              address: bookingData.address,
+              location: bookingData.location,
+              items: bookingData.items,
+              totalAmount: bookingData.amount,
+              paymentStatus: "Paid",
+              razorpayPaymentId: response.razorpay_payment_id || "",
+            };
+
+            // Use your existing shopId
+            await addOrder("DLwTpzoVBe8l4qTjE4ys", orderData);
+          } catch (fireErr) {
+            console.error("Error saving order to Firestore:", fireErr);
+          }
+
+          setBookingData((prev) =>
+            prev ? { ...prev, payment_status: "Paid" } : prev
+          );
+          setAvailabilityMsg("✔ Thank you! Payment received.");
+        } catch (err) {
+          console.error(err);
+          alert(
+            "Payment completed but saving failed. Please contact the restaurant."
+          );
+        } finally {
+          setPaying(false);
+        }
+      },
+      modal: {
+        ondismiss: function () {
+          setPaying(false);
+        },
+      },
+      theme: {
+        color: "#ffb400",
+      },
+    };
+
+    const rzp = new window.Razorpay(options);
+    rzp.open();
   }
 
   // ---------------- Render Table Grid ----------------
@@ -1032,8 +1102,13 @@ export default function App() {
                   <option value="">Select Table</option>
                   {Array.from({ length: TABLE_COUNT }, (_, i) => i + 1).map(
                     (n) => {
-                      const booked = tableStatus ? Number(tableStatus[n] || 0) : 0;
-                      const remaining = Math.max(0, TABLE_CAPACITY - booked);
+                      const booked = tableStatus
+                        ? Number(tableStatus[n] || 0)
+                        : 0;
+                      const remaining = Math.max(
+                        0,
+                        TABLE_CAPACITY - booked
+                      );
                       if (booked >= TABLE_CAPACITY) return null;
                       return (
                         <option key={n} value={n}>
@@ -1074,7 +1149,7 @@ export default function App() {
                   <label>📍 Your Current Location</label>
                   <input
                     required
-                    placeholder="Nearby location / landmark (example: near SBI ATM)"
+                    placeholder="Nearby location / landmark or GPS lat,long"
                     value={form.location}
                     onChange={(e) =>
                       setForm((p) => ({ ...p, location: e.target.value }))
@@ -1089,23 +1164,21 @@ export default function App() {
                   />
                   <button
                     type="button"
-                    onClick={autoFillGPS}
+                    onClick={handleUseMyLocation}
                     style={{
-                      marginTop: 6,
-                      background: "#2196f3",
-                      color: "#fff",
-                      border: "none",
-                      padding: "8px 12px",
+                      marginTop: 8,
+                      padding: "6px 10px",
                       borderRadius: 6,
+                      border: "none",
+                      background: "#1976d2",
+                      color: "#fff",
                       cursor: "pointer",
-                      fontWeight: 700,
+                      fontSize: 13,
+                      fontWeight: 600,
                     }}
                   >
                     📍 Auto-Fill GPS Location
                   </button>
-                  <div style={{ fontSize: 12, marginTop: 4, color: "#555" }}>
-                    We’ll reach you faster using live GPS coordinates.
-                  </div>
                 </div>
               </>
             )}
@@ -1192,7 +1265,7 @@ export default function App() {
               }}
             >
               <div>
-                <div style={{ color: "#666" }}>Total Amount to Pay Now</div>
+                <div style={{ color: "#666" }}>Total Amount to Pay</div>
                 <div
                   key={totalBump}
                   style={{
@@ -1217,7 +1290,7 @@ export default function App() {
                   fontWeight: 700,
                 }}
               >
-                {sending ? "Processing..." : "Confirm & Pay"}
+                {sending ? "Processing..." : "Proceed to Pay"}
               </button>
             </div>
 
@@ -1347,7 +1420,7 @@ export default function App() {
                 paddingTop: 10,
               }}
             >
-              Total Payment Due: ₹{bookingData.amount}
+              Total Payment: ₹{bookingData.amount}
             </p>
           </div>
 
@@ -1361,48 +1434,58 @@ export default function App() {
               boxShadow: "0 0 10px rgba(0,0,0,0.1)",
             }}
           >
-            <h3>💳 UPI Payment</h3>
+            <h3>💳 Online Payment (Razorpay)</h3>
+
             <p style={{ marginTop: 10, fontSize: 18 }}>
-              Pay to UPI ID: <b>{UPI_ID}</b>
-            </p>
-            <p style={{ marginTop: 5 }}>Scan the QR to Pay</p>
-
-            <img
-              src="/images/upi_qr.png"
-              alt="UPI QR"
-              style={{
-                width: 220,
-                margin: "15px auto",
-                display: "block",
-              }}
-            />
-
-            <p style={{ fontSize: 20, marginTop: 10 }}>
-              Amount: <b>₹{bookingData.amount}</b>
+              Pay securely using UPI, Card, NetBanking or Wallet.
             </p>
 
-            {/* Pay Now (mobile only) */}
-            <a
-              href={`upi://pay?pa=${encodeURIComponent(
-                UPI_ID
-              )}&pn=${encodeURIComponent(
-                "Open SkyBridge"
-              )}&tn=${encodeURIComponent(
-                "Table Booking"
-              )}&am=${bookingData.amount}&cu=INR`}
+            <button
+              type="button"
+              onClick={startOnlinePayment}
+              disabled={paying || bookingData.payment_status === "Paid"}
               style={{
                 display: "inline-block",
                 marginTop: 15,
-                background: "#007bff",
+                background:
+                  bookingData.payment_status === "Paid" ? "#4caf50" : "#007bff",
                 padding: "12px 25px",
                 borderRadius: 8,
                 color: "white",
-                textDecoration: "none",
+                border: "none",
+                cursor:
+                  paying || bookingData.payment_status === "Paid"
+                    ? "default"
+                    : "pointer",
                 fontSize: 18,
+                fontWeight: 700,
               }}
             >
-              Pay Now
-            </a>
+              {bookingData.payment_status === "Paid"
+                ? "✔ Payment Completed"
+                : paying
+                ? "Processing..."
+                : "Pay Now"}
+            </button>
+
+            {/* Optional: show QR for manual UPI as backup */}
+            <div style={{ marginTop: 20 }}>
+              <p style={{ marginBottom: 8, fontSize: 14, color: "#666" }}>
+                Or scan this UPI QR and pay manually:
+              </p>
+              <img
+                src="/images/upi_qr.png"
+                alt="UPI QR"
+                style={{
+                  width: 220,
+                  margin: "10px auto",
+                  display: "block",
+                }}
+              />
+              <p style={{ fontSize: 14 }}>
+                UPI ID: <b>{UPI_ID}</b>
+              </p>
+            </div>
 
             <div style={{ marginTop: 12 }}>
               {bookingData.payment_status === "Paid" ? (
@@ -1412,23 +1495,24 @@ export default function App() {
               ) : (
                 <>
                   <p style={{ color: "#b00020", fontWeight: 700 }}>
-                    ⚠ Please complete your UPI payment. After payment, tap the
-                    button below.
+                    ⚠ Please complete your online payment to confirm the order.
                   </p>
                   <button
+                    type="button"
                     onClick={markBookingPaidLocal}
                     style={{
                       marginTop: 10,
                       background: "#28a745",
                       color: "#fff",
                       border: "none",
-                      padding: "10px 16px",
+                      padding: "8px 14px",
                       borderRadius: 8,
                       cursor: "pointer",
                       fontWeight: 700,
+                      fontSize: 14,
                     }}
                   >
-                    I Paid — Mark as Paid
+                    I Paid by UPI — Mark as Paid
                   </button>
                 </>
               )}
