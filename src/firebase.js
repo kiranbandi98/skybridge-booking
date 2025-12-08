@@ -1,20 +1,15 @@
-// Import Firebase functions
+// src/firebase.js
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 
-// Your Firebase config
 const firebaseConfig = {
-  apiKey: "AIzaSyBoIKtvVXetkbqqvtIsgaI9Ldfzt6ETSRws",
+  apiKey: "YOUR_FIREBASE_API_KEY",
   authDomain: "skybridge-vendor.firebaseapp.com",
   projectId: "skybridge-vendor",
   storageBucket: "skybridge-vendor.appspot.com",
-  messagingSenderId: "1020416526526",
-  appId: "1:1020416526526:web:8322b9f8ae2840beddb6ef",
-  measurementId: "G-J7QLL8NG2L"
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
 };
 
-// Initialize Firebase
-export const app = initializeApp(firebaseConfig);
-
-// Firestore DB reference
+const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);

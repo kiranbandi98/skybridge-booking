@@ -10,9 +10,11 @@
     "cors": "^2.8.5",
     "express": "^5.1.0",
     "firebase": "^12.6.0",
+    "qrcode.react": "^4.2.0",
     "razorpay": "^2.9.6",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "react-router-dom": "^7.9.6",
     "react-scripts": "5.0.1",
     "web-vitals": "^2.1.4"
   },

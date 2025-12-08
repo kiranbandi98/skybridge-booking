@@ -1,6 +1,13 @@
+// src/App.js// src/App.js
 import React, { useMemo, useState, useEffect } from "react";
 import { db } from "./firebase";
 import { collection, addDoc, getDocs } from "firebase/firestore";
+
+// ⭐ IMPORTANT — you forgot this import
+import useFirestoreMenu from "./pages/MenuCloud";
+import { saveOrderToFirestore } from "./utils/saveOrder";
+
+ 
 
 // Add New Order to Firebase
 const addOrder = async (shopId, order) => {
@@ -28,6 +35,10 @@ const DEFAULT_BOOKING_FEE = 1;
 const TABLE_COUNT = 15;
 const TABLE_CAPACITY = 4;
 const DEMO_MODE = false;
+
+// New: configurable default shop ID for saving vendor orders (env override)
+const DEFAULT_SHOP_ID =
+  process.env.REACT_APP_VENDOR_SHOP_ID || "DLwTpzoVBe8l4qTjE4ys";
 // ----------------------------------------
 
 // ---------------- MENU ITEMS ----------------
@@ -176,6 +187,19 @@ export default function App() {
   const isDelivery = form.orderType === "delivery";
   const isTable = form.orderType === "table";
 
+  // ---------------- Firestore hybrid menu (Option B) ----------------
+  // Always call hook (hooks must not be conditional). We will only use items when enabled.
+  const fsHook = useFirestoreMenu(); // returns { loading, items, error }
+  const useFirestore = (process.env.REACT_APP_USE_FIRESTORE_MENU || "").toLowerCase() === "true";
+
+  // menuToRender prefers Firestore items when enabled and available; falls back to local menuItems
+  let menuToRender = typeof menuItems !== "undefined" ? menuItems : [];
+  if (useFirestore && !fsHook.loading && Array.isArray(fsHook.items) && fsHook.items.length > 0) {
+    menuToRender = fsHook.items;
+  }
+  // ------------------------------------------------------------------
+
+
   // auto hide demo banner
   useEffect(() => {
     if (demoBanner) {
@@ -187,7 +211,7 @@ export default function App() {
   // total calculation
   function getCartTotal() {
     const total = Object.keys(cart).reduce((acc, id) => {
-      const item = menuItems.find((m) => m.id === id);
+      const item = menuToRender.find((m) => m.id === id) || { price: 0 };
       return acc + item.price * (cart[id] || 0);
     }, 0);
     // always at least booking fee if nothing in cart
@@ -205,7 +229,7 @@ export default function App() {
       if (updated[id] === 0) delete updated[id];
 
       const itemsList = Object.keys(updated).map((key) => {
-        const item = menuItems.find((m) => m.id === key);
+        const item = menuToRender.find((m) => m.id === key);
         return `${item.name} x ${updated[key]}`;
       });
 
@@ -393,7 +417,8 @@ export default function App() {
 
     setPaying(true);
 
-    const options = {
+    
+const options = {
       key: RAZORPAY_KEY_ID,
       amount: bookingData.amount * 100, // in paise
       currency: "INR",
@@ -404,65 +429,52 @@ export default function App() {
         contact: bookingData.phone,
       },
       handler: async function (response) {
-        // Payment success
+        // Freeze bookingData (in case state changes)
+        const bd = { ...bookingData };
+        if (!bd || !bd.name) {
+          console.error("bookingData missing at payment handler");
+          alert("Payment received, but booking data was lost. Please contact support.");
+          setPaying(false);
+          return;
+        }
         try {
-          const payload = {
-            action: "book",
-            ...bookingData,
-            payment_status: "Paid",
-            razorpay_payment_id: response.razorpay_payment_id || "",
+          // Build order payload
+          const orderData = {
+            shopId: DEFAULT_SHOP_ID,
+            customerName: bd.name,
+            phone: bd.phone,
+            orderType: bd.orderType,
+            date: bd.date || "",
+            slot: bd.slot || "",
+            table: bd.table || "",
+            guests: bd.guests || "",
+            address: bd.address || "",
+            location: bd.location || "",
+            items: bd.items || [],
+            totalAmount: bd.amount,
+            paymentStatus: "Paid",
+            paymentId: response.razorpay_payment_id || "",
+            razorpayOrderId: response.razorpay_order_id || "",
+            paymentResponse: response,
           };
 
-          // 1️⃣ Save to Google Sheet (existing logic)
-          if (!DEMO_MODE) {
-            const res = await proxyFetch(SHEET_ENDPOINT, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(payload),
-            });
+          // Save to global orders collection
+          const savedOrderId = await saveOrderToFirestore(orderData);
+          console.log("Order saved with ID:", savedOrderId);
 
-            const result = await res.json();
-            if (result.result !== "success") {
-              console.error(result);
-              alert(
-                "Payment received, but we could not save booking in sheet. Please contact the restaurant."
-              );
-            }
+          // Update UI state and clear cart
+          setBookingData((prev) => (prev ? { ...prev, payment_status: "Paid" } : prev));
+          try { setCart({}); } catch (e) { /* ignore if not available */ }
+
+          // Redirect to Order Success page
+          if (savedOrderId) {
+            window.location.href = `/order-success/${savedOrderId}`;
+          } else {
+            alert("Payment successful but order ID not returned. Check console.");
           }
-
-          // 2️⃣ Save Order to Firestore
-          try {
-            const orderData = {
-              customerName: bookingData.name,
-              phone: bookingData.phone,
-              orderType: bookingData.orderType,
-              date: bookingData.date,
-              slot: bookingData.slot,
-              table: bookingData.table,
-              guests: bookingData.guests,
-              address: bookingData.address,
-              location: bookingData.location,
-              items: bookingData.items,
-              totalAmount: bookingData.amount,
-              paymentStatus: "Paid",
-              razorpayPaymentId: response.razorpay_payment_id || "",
-            };
-
-            // Use your existing shopId
-            await addOrder("DLwTpzoVBe8l4qTjE4ys", orderData);
-          } catch (fireErr) {
-            console.error("Error saving order to Firestore:", fireErr);
-          }
-
-          setBookingData((prev) =>
-            prev ? { ...prev, payment_status: "Paid" } : prev
-          );
-          setAvailabilityMsg("✔ Thank you! Payment received.");
         } catch (err) {
-          console.error(err);
-          alert(
-            "Payment completed but saving failed. Please contact the restaurant."
-          );
+          console.error("Error saving order after payment:", err);
+          alert("Payment completed but saving order failed. Please contact support.");
         } finally {
           setPaying(false);
         }
@@ -476,8 +488,7 @@ export default function App() {
         color: "#ffb400",
       },
     };
-
-    const rzp = new window.Razorpay(options);
+const rzp = new window.Razorpay(options);
     rzp.open();
   }
 
@@ -696,7 +707,7 @@ export default function App() {
               marginTop: 20,
             }}
           >
-            {menuItems.map((m) => (
+            {menuToRender.map((m) => (
               <div
                 key={m.id}
                 style={{
@@ -1193,7 +1204,7 @@ export default function App() {
                   </div>
                 )}
                 {Object.keys(cart).map((id) => {
-                  const item = menuItems.find((m) => m.id === id);
+                  const item = menuToRender.find((m) => m.id === id) || { price: 0 };
                   return (
                     <div
                       key={id}
