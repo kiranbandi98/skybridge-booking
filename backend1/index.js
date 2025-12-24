@@ -3,7 +3,6 @@ require("dotenv").config();
 const express = require("express");
 const Razorpay = require("razorpay");
 const cors = require("cors");
-const crypto = require("crypto");
 const admin = require("firebase-admin");
 
 const app = express();
@@ -47,16 +46,11 @@ async function getVendorTokens(shopId) {
     .collection("vendorDevices")
     .get();
 
-  const tokens = snap.docs.map(d => d.id);
-  console.log("📱 Vendor FCM tokens:", tokens.length);
-
-  return tokens;
+  return snap.docs.map((d) => d.id);
 }
 
 async function sendVendorNotification(shopId, orderId) {
   if (!shopId) return;
-
-  console.log("🚀 Sending notification to shop:", shopId);
 
   const tokens = await getVendorTokens(shopId);
   if (!tokens.length) return;
@@ -76,7 +70,7 @@ async function sendVendorNotification(shopId, orderId) {
   console.log("🔔 Vendor notified");
 }
 
-/* -------------------- CREATE ORDER -------------------- */
+/* -------------------- CREATE ORDER (FIXED) -------------------- */
 app.post("/create-order", async (req, res) => {
   try {
     const amount = Number(req.body.amount);
@@ -86,16 +80,18 @@ app.post("/create-order", async (req, res) => {
     }
 
     const order = await razorpay.orders.create({
-      amount,
+      amount, // amount in paise
       currency: "INR",
       receipt: `receipt_${Date.now()}`,
       payment_capture: 1,
     });
 
+    // ✅ IMPORTANT FIX: order_id (NOT orderId)
     res.json({
       success: true,
-      orderId: order.id,
+      order_id: order.id,
       amount: order.amount,
+      currency: order.currency,
     });
   } catch (err) {
     console.error("❌ Create order error:", err);
@@ -103,14 +99,11 @@ app.post("/create-order", async (req, res) => {
   }
 });
 
-/* -------------------- VERIFY PAYMENT -------------------- */
+/* -------------------- VERIFY PAYMENT (TEST MODE) -------------------- */
 app.post("/verify-payment", async (req, res) => {
   try {
     const { orderData } = req.body;
 
-    console.log("🧪 orderData received:", orderData);
-
-    // ✅ TEST MODE (NO SIGNATURE CHECK)
     const orderRef = await db.collection("orders").add({
       ...orderData,
       paymentStatus: "PAID",
