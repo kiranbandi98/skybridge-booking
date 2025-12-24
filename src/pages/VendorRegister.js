@@ -1,8 +1,12 @@
+// src/pages/VendorRegister.js
 import React, { useState } from "react";
-import { db } from "../firebase";
+import { db } from "../utils/firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
-import { QRCodeCanvas } from "qrcode.react";   // ✅ FIXED IMPORT
+import { QRCodeCanvas } from "qrcode.react";
 import { useNavigate } from "react-router-dom";
+
+// Firebase Authentication
+import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
 
 export default function VendorRegister() {
   const [form, setForm] = useState({
@@ -10,18 +14,30 @@ export default function VendorRegister() {
     ownerName: "",
     phone: "",
     email: "",
+    password: "",
     upi: "",
   });
 
   const [loading, setLoading] = useState(false);
   const [createdShop, setCreatedShop] = useState(null);
   const navigate = useNavigate();
+  const auth = getAuth();
 
   async function handleSubmit(e) {
     e.preventDefault();
     setLoading(true);
 
     try {
+      // 1️⃣ Create Firebase Auth Vendor User
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        form.email,
+        form.password
+      );
+
+      const vendorUser = userCredential.user;
+
+      // 2️⃣ Create Shop Document in Firestore
       const shopsCol = collection(db, "shops");
 
       const docRef = await addDoc(shopsCol, {
@@ -29,21 +45,28 @@ export default function VendorRegister() {
         ownerName: form.ownerName,
         phone: form.phone,
         email: form.email,
+
+        vendorUid: vendorUser.uid, // existing field
+        ownerUid: vendorUser.uid,  // ✅ ADDED (required for login redirect)
+
         settings: {
           upi: form.upi,
         },
+
         createdAt: serverTimestamp(),
         active: true,
-        menu: {}, // empty menu initially
+        menu: {},
       });
 
+      // Save shop info for success screen
       setCreatedShop({
         id: docRef.id,
         ...form,
       });
+
     } catch (err) {
-      console.error(err);
-      alert("Failed to create shop. Check console for details.");
+      console.error("Vendor registration failed:", err);
+      alert("Vendor registration failed. See console for details.");
     }
 
     setLoading(false);
@@ -72,7 +95,6 @@ export default function VendorRegister() {
             onChange={(e) =>
               setForm({ ...form, shopName: e.target.value })
             }
-            className="input"
             style={inputStyle}
           />
 
@@ -107,6 +129,17 @@ export default function VendorRegister() {
             style={inputStyle}
           />
 
+          <label>Password</label>
+          <input
+            required
+            type="password"
+            value={form.password}
+            onChange={(e) =>
+              setForm({ ...form, password: e.target.value })
+            }
+            style={inputStyle}
+          />
+
           <label>UPI ID (optional)</label>
           <input
             value={form.upi}
@@ -134,7 +167,6 @@ export default function VendorRegister() {
         </form>
       )}
 
-      {/* After creating shop */}
       {createdShop && (
         <div
           style={{
@@ -162,9 +194,8 @@ export default function VendorRegister() {
               borderRadius: 8,
             }}
           >
-            {/* ✅ FIXED: using QRCodeCanvas */}
             <QRCodeCanvas
-              value={`${window.location.origin}/shop/${createdShop.id}`}
+              value={`${window.location.origin}/menu/${createdShop.id}`}
               size={200}
             />
           </div>

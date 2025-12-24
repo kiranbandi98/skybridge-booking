@@ -1,6 +1,6 @@
 // src/pages/VendorMenuEditor.js
 import React, { useEffect, useState } from "react";
-import { db } from "../firebase";
+import { db } from "../utils/firebase";
 import {
   collection,
   addDoc,
@@ -12,6 +12,96 @@ import {
   query,
 } from "firebase/firestore";
 import { useParams, Link } from "react-router-dom";
+import { getAuth, signOut } from "firebase/auth";
+
+/* -----------------------------------------
+   NAVBAR INSERT (Safe)
+----------------------------------------- */
+const Navbar = ({ shopId }) => (
+  <div
+    style={{
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      background: "#fff",
+      padding: "12px 16px",
+      borderRadius: 10,
+      marginBottom: 20,
+      boxShadow: "0 4px 18px rgba(0,0,0,0.08)",
+    }}
+  >
+    <div style={{ fontWeight: 700, fontSize: 18 }}>Vendor Menu Editor</div>
+
+    <div style={{ display: "flex", gap: 12 }}>
+      <a
+        href={`/vendor/${shopId}`}
+        style={{
+          textDecoration: "none",
+          background: "#0366d6",
+          color: "white",
+          padding: "8px 14px",
+          borderRadius: 8,
+          fontWeight: 700,
+        }}
+      >
+        Dashboard
+      </a>
+
+      <a
+        href={`/vendor/orders`}
+        style={{
+          textDecoration: "none",
+          background: "#0366d6",
+          color: "white",
+          padding: "8px 14px",
+          borderRadius: 8,
+          fontWeight: 700,
+        }}
+      >
+        Orders
+      </a>
+
+      <a
+        href={`/vendor/${shopId}/menu`}
+        style={{
+          textDecoration: "none",
+          background: "#0366d6",
+          color: "white",
+          padding: "8px 14px",
+          borderRadius: 8,
+          fontWeight: 700,
+        }}
+      >
+        Menu
+      </a>
+
+      {/* Logout */}
+      <button
+        onClick={() => {
+          const auth = getAuth();
+          signOut(auth)
+            .then(() => (window.location.href = "/vendor/login"))
+            .catch((e) => console.error("Logout failed:", e));
+        }}
+        style={{
+          background: "#d32f2f",
+          color: "white",
+          padding: "8px 14px",
+          borderRadius: 8,
+          border: "none",
+          cursor: "pointer",
+          fontWeight: 700,
+        }}
+      >
+        Logout
+      </button>
+    </div>
+  </div>
+);
+
+/* -----------------------------------------
+   MAIN COMPONENT (Your original code)
+----------------------------------------- */
 
 export default function VendorMenuEditor() {
   const { shopId } = useParams();
@@ -96,6 +186,10 @@ export default function VendorMenuEditor() {
 
   return (
     <div style={{ padding: 20, maxWidth: 900, margin: "0 auto" }}>
+
+      {/* ✅ NEW NAVBAR */}
+      <Navbar shopId={shopId} />
+
       <h2>Menu Editor</h2>
       <p>Edit your shop menu in real-time.</p>
 

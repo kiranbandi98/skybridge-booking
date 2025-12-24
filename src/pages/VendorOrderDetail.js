@@ -1,42 +1,132 @@
+// src/pages/VendorOrderDetail.js
 import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { db } from "../firebase";
+import { db } from "../utils/firebase";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { getAuth, signOut } from "firebase/auth";
+
+/* -----------------------------------------
+   NAVBAR (Safe Insert)
+----------------------------------------- */
+const SHOP_ID = "XLxGpZl5ByxqIUUIYS2Dn";
+
+const Navbar = () => (
+  <div
+    style={{
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      background: "#fff",
+      padding: "12px 16px",
+      borderRadius: 10,
+      marginBottom: 20,
+      boxShadow: "0 4px 18px rgba(0,0,0,0.08)",
+    }}
+  >
+    <div style={{ fontWeight: 700, fontSize: 18 }}>Vendor Panel</div>
+
+    <div style={{ display: "flex", gap: 12 }}>
+      <a
+        href={`/vendor/${SHOP_ID}`}
+        style={{
+          textDecoration: "none",
+          background: "#0366d6",
+          color: "white",
+          padding: "8px 14px",
+          borderRadius: 8,
+          fontWeight: 700,
+        }}
+      >
+        Dashboard
+      </a>
+
+      <a
+        href="/vendor/orders"
+        style={{
+          textDecoration: "none",
+          background: "#0366d6",
+          color: "white",
+          padding: "8px 14px",
+          borderRadius: 8,
+          fontWeight: 700,
+        }}
+      >
+        Orders
+      </a>
+
+      <a
+        href={`/vendor/${SHOP_ID}/menu`}
+        style={{
+          textDecoration: "none",
+          background: "#0366d6",
+          color: "white",
+          padding: "8px 14px",
+          borderRadius: 8,
+          fontWeight: 700,
+        }}
+      >
+        Menu
+      </a>
+
+      {/* LOGOUT */}
+      <button
+        onClick={() => {
+          const auth = getAuth();
+          signOut(auth)
+            .then(() => (window.location.href = "/vendor/login"))
+            .catch((e) => console.error("Logout failed:", e));
+        }}
+        style={{
+          background: "#d32f2f",
+          color: "white",
+          padding: "8px 14px",
+          borderRadius: 8,
+          border: "none",
+          cursor: "pointer",
+          fontWeight: 700,
+        }}
+      >
+        Logout
+      </button>
+    </div>
+  </div>
+);
+
+/* -----------------------------------------
+   ORIGINAL PAGE STARTS HERE
+----------------------------------------- */
 
 export default function VendorOrderDetail() {
-  const { orderId } = useParams();
+  const { shopId, orderId } = useParams();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
 
   // ------------------------------------
-  // 🔥 Load Order Data
+  // 🔥 Load Single Order
   // ------------------------------------
   useEffect(() => {
     async function load() {
       try {
-        const snap = await getDoc(doc(db, "orders", orderId));
-        if (snap.exists()) {
-          setOrder(snap.data());
-        }
+        const snap = await getDoc(doc(db, "shops", shopId, "orders", orderId));
+        if (snap.exists()) setOrder(snap.data());
       } catch (err) {
         console.error("Failed to load order:", err);
       }
       setLoading(false);
     }
-
     load();
   }, [orderId]);
 
   // ------------------------------------
-  // 🔧 Update Order Status
+  // 🔧 Update Order Workflow Status
   // ------------------------------------
   async function updateStatus(newStatus) {
     try {
-      await updateDoc(doc(db, "orders", orderId), {
-        paymentStatus: newStatus,
+      await updateDoc(doc(db, "shops", shopId, "orders", orderId), {
+        orderStatus: newStatus, // ⭐ new workflow field
       });
-      setOrder((prev) => ({ ...prev, paymentStatus: newStatus }));
-      alert(`Order marked as ${newStatus}`);
+
+      setOrder((prev) => ({ ...prev, orderStatus: newStatus }));
     } catch (error) {
       console.error("Failed to update status:", error);
     }
@@ -45,17 +135,24 @@ export default function VendorOrderDetail() {
   if (loading) return <h2 style={{ padding: 20 }}>Loading order...</h2>;
   if (!order) return <h2 style={{ padding: 20 }}>Order not found.</h2>;
 
-  // Convert timestamp to readable format
+  // ------------------------------------
+  // 📅 Fix timestamp display
+  // ------------------------------------
   let orderDate = "";
-  if (order.timestamp && order.timestamp.toDate) {
-    orderDate = order.timestamp.toDate().toLocaleString();
+  if (order.createdAt instanceof Date) {
+    orderDate = order.createdAt.toLocaleString();
+  } else if (order.createdAt?.toDate) {
+    orderDate = order.createdAt.toDate().toLocaleString();
   }
 
   return (
     <div style={{ padding: 20, maxWidth: 700, margin: "0 auto" }}>
+      
+      {/* ✅ NEW NAVBAR */}
+      <Navbar />
+
       <h2>Order #{orderId}</h2>
 
-      {/* Back Button */}
       <Link to="/vendor/orders">
         <button
           style={{
@@ -82,9 +179,8 @@ export default function VendorOrderDetail() {
           marginBottom: 20,
         }}
       >
-        <p>
-          <b>Name:</b> {order.customerName}
-        </p>
+        <p><b>Name:</b> {order.customerName}</p>
+
         <p>
           <b>Phone:</b>{" "}
           <a
@@ -95,15 +191,9 @@ export default function VendorOrderDetail() {
           </a>
         </p>
 
-        <p>
-          <b>Order Type:</b> {order.orderType}
-        </p>
+        <p><b>Order Type:</b> {order.orderType}</p>
 
-        {order.address && (
-          <p>
-            <b>Address:</b> {order.address}
-          </p>
-        )}
+        {order.address && <p><b>Address:</b> {order.address}</p>}
 
         {order.location && (
           <p>
@@ -124,34 +214,32 @@ export default function VendorOrderDetail() {
           </p>
         )}
 
-        <p>
-          <b>Total Amount:</b> ₹{order.totalAmount}
-        </p>
+        <p><b>Total Amount:</b> ₹{order.totalAmount}</p>
+
+        <p><b>Payment:</b> {order.paymentStatus}</p>
 
         <p>
-          <b>Payment Status:</b>{" "}
+          <b>Order Status:</b>{" "}
           <span
             style={{
               padding: "6px 12px",
               borderRadius: 8,
               background:
-                order.paymentStatus === "Completed"
+                order.orderStatus === "Completed"
                   ? "#1e88e5"
-                  : order.paymentStatus === "Ready"
+                  : order.orderStatus === "Ready"
                   ? "#4caf50"
-                  : order.paymentStatus === "Preparing"
+                  : order.orderStatus === "Preparing"
                   ? "#ff9800"
                   : "#6c757d",
               color: "white",
             }}
           >
-            {order.paymentStatus}
+            {order.orderStatus || "Pending"}
           </span>
         </p>
 
-        <p>
-          <b>Order Time:</b> {orderDate}
-        </p>
+        <p><b>Order Time:</b> {orderDate}</p>
       </div>
 
       {/* Items */}
@@ -166,15 +254,19 @@ export default function VendorOrderDetail() {
       >
         <h3>Items</h3>
         <ul>
-          {order.items && order.items.length > 0 ? (
-            order.items.map((item, idx) => <li key={idx}>{item}</li>)
+          {order.items?.length > 0 ? (
+            order.items.map((item, idx) => (
+              <li key={idx}>
+                {item.name} × {item.qty || 1} — ₹{(item.price || 0) * (item.qty || 1)}
+              </li>
+            ))
           ) : (
             <li>No items listed.</li>
           )}
         </ul>
       </div>
 
-      {/* Status Update Buttons */}
+      {/* Status Update */}
       <div
         style={{
           padding: 20,

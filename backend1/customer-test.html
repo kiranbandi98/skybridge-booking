@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>SkyBridge Customer Test</title>
+</head>
+<body>
+  <h2>SkyBridge Customer Order Test</h2>
+
+  <button onclick="placeOrder()">Place Order for Shop</button>
+
+  <script>
+    const SHOP_ID = "VJIcnxDUaKep2t7wyBHL";
+
+    async function placeOrder() {
+      // STEP 1: Create Razorpay order
+      const orderRes = await fetch("http://localhost:5000/create-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: 10000 }) // ₹100
+      });
+
+      const order = await orderRes.json();
+
+      alert("Order created. Now simulating payment success.");
+
+      // STEP 2: Simulate payment verification
+      const verifyRes = await fetch("http://localhost:5000/verify-payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          razorpay_order_id: order.orderId,
+          razorpay_payment_id: "test_payment_id",
+          razorpay_signature: "test_signature",
+          orderData: {
+            shopId: SHOP_ID,
+            customerName: "Test Customer",
+            totalAmount: 100,
+            items: [{ name: "Test Item", qty: 1 }]
+          }
+        })
+      });
+
+      const result = await verifyRes.json();
+      console.log(result);
+
+      alert("Order placed. Check vendor side 🔔");
+    }
+  </script>
+</body>
+</html>

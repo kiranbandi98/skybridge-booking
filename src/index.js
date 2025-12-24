@@ -1,26 +1,50 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import "./index.css";
-import App from "./App";
 
-// Global Cart Provider
 import { CartProvider } from "./context/CartContext";
 
-// Vendor Pages
+/* =======================
+   CUSTOMER PAGES
+======================= */
+import ShopMenuPage from "./pages/ShopMenuPage";
+import CartPage from "./pages/CartPage";
+import CheckoutPage from "./pages/CheckoutPage";
+import OrderSuccess from "./pages/OrderSuccess";
+import TrackOrder from "./pages/TrackOrder";
+
+/* =======================
+   VENDOR PAGES
+======================= */
 import VendorRegister from "./pages/VendorRegister";
+import VendorLogin from "./pages/VendorLogin";
 import VendorDashboard from "./pages/VendorDashboard";
 import VendorMenuEditor from "./pages/VendorMenuEditor";
 import VendorOrders from "./pages/VendorOrders";
 import VendorOrderDetail from "./pages/VendorOrderDetail";
 
-// Correct Menu Component
-import MenuDebug from "./pages/MenuDebug.js";
+/* =======================
+   LAYOUT & PROTECTION
+======================= */
+import ProtectedVendorRoute from "./components/ProtectedVendorRoute";
+import VendorLayout from "./components/VendorLayout";
 
-// Order success page (customer)
-import OrderSuccess from "./pages/OrderSuccess";
-
-import reportWebVitals from "./reportWebVitals";
+/* =======================
+   SERVICE WORKER (FCM FIX)
+======================= */
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker
+      .register("/firebase-messaging-sw.js")
+      .then((registration) => {
+        console.log("✅ Service Worker registered:", registration);
+      })
+      .catch((error) => {
+        console.error("❌ Service Worker registration failed:", error);
+      });
+  });
+}
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 
@@ -29,27 +53,42 @@ root.render(
     <CartProvider>
       <BrowserRouter>
         <Routes>
-          {/* Main App */}
-          <Route path="/" element={<App />} />
-          <Route path="/menu" element={<MenuDebug />} />
 
-          {/* Customer Order Success */}
-          <Route path="/order-success/:orderId" element={<OrderSuccess />} />
+          {/* Default */}
+          <Route path="/" element={<Navigate to="/vendor/login" replace />} />
 
-          {/* Vendor Routes */}
+          {/* =======================
+              CUSTOMER ROUTES
+          ======================= */}
+          <Route path="/shop/:shopId" element={<ShopMenuPage />} />
+          <Route path="/cart/:shopId" element={<CartPage />} />
+          <Route path="/checkout/:shopId" element={<CheckoutPage />} />
+          <Route
+            path="/order-success/:shopId/:orderId"
+            element={<OrderSuccess />}
+          />
+          <Route path="/track/:shopId/:orderId" element={<TrackOrder />} />
+
+          {/* =======================
+              VENDOR AUTH
+          ======================= */}
           <Route path="/vendor/register" element={<VendorRegister />} />
-          <Route path="/vendor/:shopId" element={<VendorDashboard />} />
-          <Route path="/vendor/:shopId/menu" element={<VendorMenuEditor />} />
+          <Route path="/vendor/login" element={<VendorLogin />} />
 
-          {/* Vendor Orders list */}
-          <Route path="/vendor/orders" element={<VendorOrders />} />
+          {/* =======================
+              VENDOR PROTECTED
+          ======================= */}
+          <Route path="/vendor/:shopId" element={<ProtectedVendorRoute />}>
+            <Route element={<VendorLayout />}>
+              <Route index element={<VendorDashboard />} />
+              <Route path="orders" element={<VendorOrders />} />
+              <Route path="orders/:orderId" element={<VendorOrderDetail />} />
+              <Route path="menu" element={<VendorMenuEditor />} />
+            </Route>
+          </Route>
 
-          {/* Vendor Order Detail page */}
-          <Route path="/vendor/orders/:orderId" element={<VendorOrderDetail />} />
         </Routes>
       </BrowserRouter>
     </CartProvider>
   </React.StrictMode>
 );
-
-reportWebVitals();

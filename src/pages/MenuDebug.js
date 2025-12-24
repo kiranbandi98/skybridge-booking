@@ -2,7 +2,7 @@
 // Paste this file and reload:  http://localhost:3000/menu
 
 import React, { useEffect, useState } from "react";
-import { db } from "../firebase";
+import { db } from "../utils/firebase";
 import { collection, getDocs } from "firebase/firestore";
 import { useCart } from "../CartContext";
 

@@ -1,15 +1,20 @@
-import { db } from "../firebase";
+import { db } from "../utils/firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
-export async function saveOrderToFirestore(orderData) {
+export async function saveOrderToFirestore(shopId, orderData) {
   try {
-    const docRef = await addDoc(collection(db, "orders"), {
-      ...orderData,
-      status: "paid",
-      createdAt: serverTimestamp(),
-    });
+    // ✅ CORRECT: orders saved under the shop
+    const docRef = await addDoc(
+      collection(db, "shops", shopId, "orders"),
+      {
+        ...orderData,
+        shopId: shopId, // still useful for queries/debugging
+        status: "paid",
+        createdAt: serverTimestamp(),
+      }
+    );
 
-    return docRef.id;  // return orderId so we can redirect
+    return docRef.id;
   } catch (err) {
     console.error("saveOrderToFirestore error:", err);
     throw err;

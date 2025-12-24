@@ -1,17 +1,108 @@
 import React, { useEffect, useState, useRef } from "react";
-import { useNavigate } from "react-router-dom";
-import { db } from "../firebase";
+import { useNavigate, useParams } from "react-router-dom";
+import { db } from "../utils/firebase";
 import {
   collection,
   onSnapshot,
   doc,
   updateDoc,
 } from "firebase/firestore";
+import { getAuth, signOut } from "firebase/auth"; // ⭐ Added for logout
+
+/* ---------------- NAVBAR (Safe Insert) ---------------- */
+ 
+
+
+const Navbar = ({ shopId }) => {
+  if (!shopId) return null;
+
+  return (
+  <div
+    style={{
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      background: "#fff",
+      padding: "12px 16px",
+      borderRadius: 10,
+      marginBottom: 20,
+      boxShadow: "0 4px 18px rgba(0,0,0,0.08)",
+    }}
+  >
+    <div style={{ fontWeight: 700, fontSize: 18 }}>Vendor Orders</div>
+
+    <div style={{ display: "flex", gap: 12 }}>
+      <a
+        href={`/vendor/${shopId}`}
+        style={{
+          textDecoration: "none",
+          background: "#0366d6",
+          color: "white",
+          padding: "8px 14px",
+          borderRadius: 8,
+          fontWeight: 700,
+        }}
+      >
+        Dashboard
+      </a>
+
+      <a
+        href="/vendor/orders"
+        style={{
+          textDecoration: "none",
+          background: "#0366d6",
+          color: "white",
+          padding: "8px 14px",
+          borderRadius: 8,
+          fontWeight: 700,
+        }}
+      >
+        Orders
+      </a>
+
+      <a
+        href={`/vendor/${shopId}/menu`}
+        style={{
+          textDecoration: "none",
+          background: "#0366d6",
+          color: "white",
+          padding: "8px 14px",
+          borderRadius: 8,
+          fontWeight: 700,
+        }}
+      >
+        Menu
+      </a>
+
+      {/* LOGOUT */}
+      <button
+        onClick={() => {
+          const auth = getAuth();
+          signOut(auth)
+            .then(() => (window.location.href = "/vendor/login"))
+            .catch((e) => console.error("Logout failed:", e));
+        }}
+        style={{
+          background: "#d32f2f",
+          color: "white",
+          padding: "8px 14px",
+          borderRadius: 8,
+          border: "none",
+          cursor: "pointer",
+          fontWeight: 700,
+        }}
+      >
+        Logout
+      </button>
+    </div>
+  </div>
+  );
+};
 
 /* ---------------- Timestamp Helpers ---------------- */
 function toDateSafe(order) {
   try {
-    const t = order.timestamp;
+    const t = order.timestamp || order.createdAt;
     if (!t) return order.date ? new Date(order.date) : null;
     if (typeof t.toDate === "function") return t.toDate();
     return new Date(t);
@@ -25,6 +116,7 @@ function isToday(order) {
   if (!d) return false;
 
   const now = new Date();
+
   return (
     d.getFullYear() === now.getFullYear() &&
     d.getMonth() === now.getMonth() &&
@@ -72,14 +164,21 @@ function sortOrders(list) {
 =========================================================== */
 
 export default function VendorOrders() {
+  const { shopId } = useParams();
   const [orders, setOrders] = useState([]);
   const [filter, setFilter] = useState("All");
   const [todayOnly, setTodayOnly] = useState(false);
   const [isRinging, setIsRinging] = useState(false);
 
-  // Toast state
+  
+  const [showUnlockPopup, setShowUnlockPopup] = useState(false);
+// Toast state for NEW ORDER (top-right)
   const [toast, setToast] = useState(null); // { id, name, total, visible }
   const toastTimerRef = useRef(null);
+
+  // Status toast (bottom-left) for status changes (keeps small)
+  const [statusToast, setStatusToast] = useState(null);
+  const statusToastTimerRef = useRef(null);
 
   const initialLoadRef = useRef(true);
   const lastOrderIdRef = useRef(null);
@@ -87,22 +186,109 @@ export default function VendorOrders() {
   const newOrderAudio = useRef(null);
   const statusBeep = useRef(null);
 
+  // whether audio playback was unlocked by a user gesture
+  const [audioUnlocked, setAudioUnlocked] = useState(false);
+  const audioUnlockTriedRef = useRef(false);
+
   const navigate = useNavigate();
 
+  // Initialize audio elements
   useEffect(() => {
     newOrderAudio.current = new Audio("/order-alert.mp3");
-    statusBeep.current = new Audio("/ready-alert.mp3");
+        try { newOrderAudio.current.loop = true; newOrderAudio.current.volume = 1.0; } catch(e){} 
+statusBeep.current = new Audio("/ready-alert.mp3");
 
+    // new order alert is looped for persistent alarm (stops via STOP ALARM)
     newOrderAudio.current.loop = true;
     newOrderAudio.current.volume = 1.0;
     statusBeep.current.volume = 1.0;
 
+    // Attach one-time document-level listener to unlock audio on first user interaction
+    function onFirstUserInteraction() {
+      // call unlockAudio only once
+      tryUnlockAudio();
+      // remove listener automatically by using once:true below
+    }
+
+    // use capture + once to get earliest event
+    document.addEventListener("click", onFirstUserInteraction, { once: true, capture: true });
+
     return () => {
+      document.removeEventListener("click", onFirstUserInteraction, { capture: true });
       try {
-        newOrderAudio.current && newOrderAudio.current.pause();
+        if (newOrderAudio.current) {
+          newOrderAudio.current.pause();
+          newOrderAudio.current = null;
+        }
+        if (statusBeep.current) {
+          statusBeep.current.pause();
+          statusBeep.current = null;
+        }
       } catch {}
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  
+const tryPlayNewOrderSound = () => {
+  try {
+    if (!newOrderAudio.current) return;
+    newOrderAudio.current.play().then(()=> {
+      // played
+    }).catch((e)=> {
+      // Play blocked — show unlock popup so vendor can enable sound
+      console.warn("newOrderAudio play blocked, showing unlock popup");
+      setShowUnlockPopup(true);
+    });
+  } catch (e) {
+    console.warn("tryPlayNewOrderSound error", e);
+    setShowUnlockPopup(true);
+  }
+};
+
+
+  // Try unlocking audio by playing and immediately pausing (user gesture required)
+  async function tryUnlockAudio() {
+    if (audioUnlockTriedRef.current) return;
+    audioUnlockTriedRef.current = true;
+
+    if (!newOrderAudio.current || !statusBeep.current) {
+      setAudioUnlocked(false);
+      return;
+    }
+
+    try {
+      // Attempt to play & pause each audio; success means the browser accepted a user gesture
+      await Promise.all([
+        newOrderAudio.current.play().then(() => {
+          newOrderAudio.current.pause();
+          newOrderAudio.current.currentTime = 0;
+        }).catch(() => {}),
+        statusBeep.current.play().then(() => {
+          statusBeep.current.pause();
+          statusBeep.current.currentTime = 0;
+        }).catch(() => {}),
+      ]);
+      setAudioUnlocked(true);
+    } catch (err) {
+      // If it fails, we'll keep audioUnlocked false (user must click button)
+      setAudioUnlocked(false);
+    }
+  }
+
+  // Call this from an explicit button click to unlock audio (guaranteed user gesture)
+  const handleEnableSoundsClick = async () => {
+    await tryUnlockAudio();
+    // after attempting, if unlocked, good; otherwise warn in console
+    if (!audioUnlocked) {
+      // tryUnlockAudio sets audioUnlocked state; but we also re-check
+      setTimeout(() => {
+        if (!audioUnlocked) {
+          console.warn("Audio still locked. You may need to interact (click) in the page to enable sounds.");
+        }
+      }, 200);
+    }
+  };
 
   const stopAlarm = () => {
     try {
@@ -114,13 +300,15 @@ export default function VendorOrders() {
 
   async function updateStatus(orderId, newStatus) {
     try {
-      await updateDoc(doc(db, "orders", orderId), {
+      await updateDoc(doc(db, "shops", shopId, "orders", orderId), {
         paymentStatus: newStatus,
       });
     } catch (err) {
       console.error("Update status failed", err);
     }
   }
+
+  /* ------------------ Toast helpers ------------------ */
 
   function showNewOrderToast(orderData) {
     if (toastTimerRef.current) {
@@ -142,14 +330,32 @@ export default function VendorOrders() {
     }, 5000);
   }
 
+  function showStatusToast(title, message) {
+    if (statusToastTimerRef.current) {
+      clearTimeout(statusToastTimerRef.current);
+      statusToastTimerRef.current = null;
+    }
+    setStatusToast({
+      title,
+      message,
+      visible: true,
+    });
+
+    statusToastTimerRef.current = setTimeout(() => {
+      setStatusToast((t) => (t ? { ...t, visible: false } : t));
+      statusToastTimerRef.current = null;
+    }, 4000);
+  }
+
   function onToastClick(orderId) {
     setToast(null);
     stopAlarm();
-    navigate(`/vendor/orders/${orderId}`);
-  }
+    // navigation removed: dashboard already shows order details
+}
 
+  /* ------------------ Firestore real-time listener ------------------ */
   useEffect(() => {
-    const colRef = collection(db, "orders");
+    const colRef = collection(db, "shops", shopId, "orders");
 
     const unsubscribe = onSnapshot(colRef, (snapshot) => {
       let mapped = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
@@ -160,14 +366,26 @@ export default function VendorOrders() {
 
         if (change.type === "added") {
           if (initialLoadRef.current) {
+            // during first load, set lastOrderIdRef to the most recent doc so next adds are real new
             lastOrderIdRef.current = snapshot.docs[0]?.id || orderId;
           } else {
+            // If it's a newly added doc after initial load -> new order
             if (orderId !== lastOrderIdRef.current) {
-              try {
-                newOrderAudio.current.play();
-                setIsRinging(true);
-              } catch (e) {
-                console.warn("Audio play blocked (user gesture required)");
+              // Try play the alarm, but handle promise rejection safely
+              if (audioUnlocked) {
+                newOrderAudio.current
+                  .play()
+                  .then(() => {
+                    setIsRinging(true);
+                  })
+                  .catch((e) => {
+                    // audio play blocked even after unlock attempt
+                    console.warn("Audio play blocked (even after unlocking).", e);
+                    setIsRinging(false);
+                  });
+              } else {
+                // not unlocked yet: leave isRinging false, but show toast so vendor sees it
+                console.warn("New order arrived but sounds not unlocked.");
               }
 
               showNewOrderToast({ id: orderId, ...order });
@@ -179,12 +397,30 @@ export default function VendorOrders() {
         if (change.type === "modified") {
           const s = (order.paymentStatus || "").toLowerCase();
           if (s === "ready" || s === "completed") {
-            try {
-              statusBeep.current.currentTime = 0;
-              statusBeep.current.play();
-            } catch (e) {
-              console.warn("Status beep blocked.");
+            // play a short status beep (non-loop)
+            if (audioUnlocked) {
+              try {
+                statusBeep.current.currentTime = 0;
+                statusBeep.current
+                  .play()
+                  .then(() => {
+                    // success
+                  })
+                  .catch((e) => {
+                    console.warn("Status beep blocked.", e);
+                  });
+              } catch (e) {
+                console.warn("Status beep play error.", e);
+              }
+            } else {
+              console.warn("Status change but audio locked.");
             }
+
+            // show small status toast bottom-left
+            showStatusToast(
+              `Order ${orderId.slice(0, 6)}`,
+              s === "ready" ? "is Ready" : "is Completed"
+            );
           }
         }
       });
@@ -198,9 +434,12 @@ export default function VendorOrders() {
     return () => {
       unsubscribe();
       if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+      if (statusToastTimerRef.current) clearTimeout(statusToastTimerRef.current);
     };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [audioUnlocked]);
 
+  /* ------------------ Filtering ------------------ */
   const filteredOrders = orders.filter((o) => {
     if (todayOnly && !isToday(o)) return false;
     if (filter === "All") return true;
@@ -230,9 +469,48 @@ export default function VendorOrders() {
     transition: "transform 280ms cubic-bezier(.2,.9,.2,1), opacity 280ms",
   };
 
+  const statusToastBase = {
+    position: "fixed",
+    left: 18,
+    bottom: 18,
+    zIndex: 9999,
+    minWidth: 220,
+    boxShadow: "0 8px 30px rgba(0,0,0,0.12)",
+    borderRadius: 10,
+    overflow: "hidden",
+    transition: "transform 260ms ease, opacity 260ms ease",
+  };
+
   return (
     <div style={{ padding: 20 }}>
+      {/* ⭐ INSERTED NAVBAR HERE */}
+      <Navbar shopId={shopId} />
+
       <h2>Vendor Orders Dashboard</h2>
+
+      {/* Enable sounds button (visible until unlocked) */}
+      {!audioUnlocked && (
+        <div style={{ marginBottom: 12 }}>
+          <button
+            onClick={handleEnableSoundsClick}
+            style={{
+              background: "#007bff",
+              color: "#fff",
+              padding: "8px 14px",
+              borderRadius: 8,
+              cursor: "pointer",
+              fontSize: 15,
+              border: "none",
+              marginRight: 12,
+            }}
+          >
+            ▶ Enable Sounds
+          </button>
+          <span style={{ color: "#666", fontSize: 14 }}>
+            Click anywhere on the page also enables sounds (browser requirement).
+          </span>
+        </div>
+      )}
 
       {isRinging && (
         <div style={{ marginBottom: 12 }}>
@@ -245,6 +523,7 @@ export default function VendorOrders() {
               borderRadius: 8,
               cursor: "pointer",
               fontSize: 16,
+              border: "2px solid rgba(0,0,0,0.08)",
             }}
           >
             🔴 STOP ALARM
@@ -294,7 +573,7 @@ export default function VendorOrders() {
       {filteredOrders.map((o) => (
         <div
           key={o.id}
-          onClick={() => navigate(`/vendor/orders/${o.id}`)}
+          onClick={(e) => e.stopPropagation()}
           style={{
             padding: 16,
             marginBottom: 14,
@@ -326,7 +605,9 @@ export default function VendorOrders() {
           <b>Items:</b>
           <ul>
             {o.items?.map((item, idx) => (
-              <li key={idx}>{item}</li>
+              <li key={idx}>
+                {item.name} × {item.qty} — ₹{item.price * item.qty}
+              </li>
             ))}
           </ul>
 
@@ -384,6 +665,7 @@ export default function VendorOrders() {
         </div>
       ))}
 
+      {/* New Order Toast (top-right) */}
       {toast && (
         <div
           style={{
@@ -403,7 +685,10 @@ export default function VendorOrders() {
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 800, marginBottom: 4 }}>New Order — {toast.name}</div>
               <div style={{ color: "#666", fontSize: 14 }}>
-                ₹{toast.total} • {toast.items && toast.items.length > 0 ? toast.items.slice(0, 3).join(", ") + (toast.items.length > 3 ? "..." : "") : "No items"}
+                ₹{toast.total} • {toast.items && toast.items.length > 0 ? toast.items
+                      .slice(0, 3)
+                      .map((i) => `${i.name}×${i.qty}`)
+                      .join(", ") + (toast.items.length > 3 ? "..." : "") : "No items"}
               </div>
             </div>
 
@@ -412,7 +697,7 @@ export default function VendorOrders() {
                 onClick={(e) => {
                   e.stopPropagation();
                   stopAlarm();
-                  navigate(`/vendor/orders/${toast.id}`);
+                  // navigation removed
                 }}
                 style={{
                   background: "#0366d6",
@@ -425,6 +710,30 @@ export default function VendorOrders() {
               >
                 Open
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Status toast (bottom-left) */}
+      {statusToast && (
+        <div
+          style={{
+            ...statusToastBase,
+            background: "#fff",
+            opacity: statusToast.visible ? 1 : 0,
+            transform: statusToast.visible ? "translateY(0)" : "translateY(18px)",
+            pointerEvents: statusToast.visible ? "auto" : "none",
+            padding: 12,
+          }}
+        >
+          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+            <div style={{ width: 46, height: 46, borderRadius: 8, background: "#e6f4ea", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>
+              ✅
+            </div>
+            <div>
+              <div style={{ fontWeight: 800 }}>{statusToast.title}</div>
+              <div style={{ color: "#666", fontSize: 14 }}>{statusToast.message}</div>
             </div>
           </div>
         </div>
