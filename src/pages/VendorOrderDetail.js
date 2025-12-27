@@ -55,7 +55,7 @@ const Navbar = () => (
       </a>
 
       <a
-        href={`/vendor/${SHOP_ID}/menu`}
+        href={`/#/vendor/${SHOP_ID}/menu`}
         style={{
           textDecoration: "none",
           background: "#0366d6",

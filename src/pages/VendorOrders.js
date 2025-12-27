@@ -61,7 +61,8 @@ const Navbar = ({ shopId }) => {
       </a>
 
       <a
-        href={`/vendor/${shopId}/menu`}
+        href={`/#/vendor/${shopId}/menu`}
+
         style={{
           textDecoration: "none",
           background: "#0366d6",
