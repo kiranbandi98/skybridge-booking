@@ -33,8 +33,8 @@ const Navbar = ({ shopId }) => (
     <div style={{ fontWeight: 700, fontSize: 18 }}>Vendor Menu Editor</div>
 
     <div style={{ display: "flex", gap: 12 }}>
-      <a
-        href={`/vendor/${shopId}`}
+      <Link
+        to={`/vendor/${shopId}`}
         style={{
           textDecoration: "none",
           background: "#0366d6",
@@ -45,10 +45,10 @@ const Navbar = ({ shopId }) => (
         }}
       >
         Dashboard
-      </a>
+      </Link>
 
-      <a
-        href={`/vendor/orders`}
+      <Link
+        to={`/vendor/${shopId}/orders`}
         style={{
           textDecoration: "none",
           background: "#0366d6",
@@ -59,10 +59,10 @@ const Navbar = ({ shopId }) => (
         }}
       >
         Orders
-      </a>
+      </Link>
 
-      <a
-        href={`/vendor/${shopId}/menu`}
+      <Link
+        to={`/vendor/${shopId}/menu`}
         style={{
           textDecoration: "none",
           background: "#0366d6",
@@ -73,14 +73,14 @@ const Navbar = ({ shopId }) => (
         }}
       >
         Menu
-      </a>
+      </Link>
 
       {/* Logout */}
       <button
         onClick={() => {
           const auth = getAuth();
           signOut(auth)
-            .then(() => (window.location.href = "/vendor/login"))
+            .then(() => (window.location.hash = "#/vendor/login"))
             .catch((e) => console.error("Logout failed:", e));
         }}
         style={{
