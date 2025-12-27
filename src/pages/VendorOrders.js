@@ -145,8 +145,8 @@ function priority(status) {
 
 function sortOrders(list) {
   return list.sort((a, b) => {
-    const pa = priority(a.paymentStatus);
-    const pb = priority(b.paymentStatus);
+    const pa = priority(a.orderStatus || a.paymentStatus);
+    const pb = priority(b.orderStatus || b.paymentStatus);
 
     if (pa !== pb) return pa - pb;
 
@@ -162,6 +162,47 @@ function sortOrders(list) {
 /* ===========================================================
                      MAIN COMPONENT
 =========================================================== */
+
+
+
+// 🔊 Text-to-Speech helpers (ADDED)
+const spokenPaidOrderIdsRef = { current: new Set() };
+
+function buildVoiceText(order) {
+  const amount = order.totalAmount || 0;
+  const mode = localStorage.getItem("voiceAnnounceMode") || "AMOUNT_ONLY";
+
+  if (mode === "AMOUNT_ONLY") {
+    return `${amount} rupees received.`;
+  }
+
+  const items = order.items || [];
+  if (items.length === 0) return `${amount} rupees received.`;
+
+  const itemText = items
+    .map(i => {
+      const qty = i.qty || 1;
+      const unit = qty > 1 ? "plates" : "plate";
+      return `${qty} ${unit} ${i.name}`;
+    })
+    .join(", ");
+
+  return `${amount} rupees received. ${itemText}.`;
+}
+
+function speakNow(text) {
+  try {
+    window.speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = "en-IN";
+    utter.volume = 1;
+    utter.rate = 1;
+    window.speechSynthesis.speak(utter);
+  } catch (e) {
+    console.warn("TTS failed", e);
+  }
+}
+
 
 export default function VendorOrders() {
   const { shopId } = useParams();
@@ -182,6 +223,8 @@ export default function VendorOrders() {
 
   const initialLoadRef = useRef(true);
   const lastOrderIdRef = useRef(null);
+
+  const alarmedOrderIdsRef = useRef(new Set());
 
   const newOrderAudio = useRef(null);
   const statusBeep = useRef(null);
@@ -270,6 +313,8 @@ const tryPlayNewOrderSound = () => {
         }).catch(() => {}),
       ]);
       setAudioUnlocked(true);
+    const today = new Date().toISOString().slice(0,10);
+    localStorage.setItem("audioUnlockedDate", today);
     } catch (err) {
       // If it fails, we'll keep audioUnlocked false (user must click button)
       setAudioUnlocked(false);
@@ -301,7 +346,7 @@ const tryPlayNewOrderSound = () => {
   async function updateStatus(orderId, newStatus) {
     try {
       await updateDoc(doc(db, "shops", shopId, "orders", orderId), {
-        paymentStatus: newStatus,
+        orderStatus: newStatus,
       });
     } catch (err) {
       console.error("Update status failed", err);
@@ -361,8 +406,23 @@ const tryPlayNewOrderSound = () => {
       let mapped = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
 
       snapshot.docChanges().forEach((change) => {
+          
+
         const order = change.doc.data();
         const orderId = change.doc.id;
+
+        // 🔊 Payment voice trigger (Paid only, once)
+        if (
+          change.type === "modified" &&
+          (order.paymentStatus || "").toLowerCase() === "paid" &&
+          !spokenPaidOrderIdsRef.current.has(orderId)
+        ) {
+          spokenPaidOrderIdsRef.current.add(orderId);
+          if (audioUnlocked && localStorage.getItem("paymentVoiceEnabled") === "true") {
+            const text = buildVoiceText(order);
+            speakNow(text);
+          }
+        }
 
         if (change.type === "added") {
           if (initialLoadRef.current) {
@@ -370,9 +430,10 @@ const tryPlayNewOrderSound = () => {
             lastOrderIdRef.current = snapshot.docs[0]?.id || orderId;
           } else {
             // If it's a newly added doc after initial load -> new order
-            if (orderId !== lastOrderIdRef.current) {
+            if (orderId !== lastOrderIdRef.current && !alarmedOrderIdsRef.current.has(orderId)) {
+              alarmedOrderIdsRef.current.add(orderId);
               // Try play the alarm, but handle promise rejection safely
-              if (audioUnlocked) {
+              if (audioUnlocked && localStorage.getItem("paymentVoiceEnabled") === "true") {
                 newOrderAudio.current
                   .play()
                   .then(() => {
@@ -395,10 +456,10 @@ const tryPlayNewOrderSound = () => {
         }
 
         if (change.type === "modified") {
-          const s = (order.paymentStatus || "").toLowerCase();
+          const s = ((order.orderStatus || order.paymentStatus) || "").toLowerCase();
           if (s === "ready" || s === "completed") {
             // play a short status beep (non-loop)
-            if (audioUnlocked) {
+            if (audioUnlocked && localStorage.getItem("paymentVoiceEnabled") === "true") {
               try {
                 statusBeep.current.currentTime = 0;
                 statusBeep.current
@@ -439,11 +500,36 @@ const tryPlayNewOrderSound = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [audioUnlocked]);
 
+
+  // 🔁 After audio unlock, announce any already-paid order not spoken yet
+  useEffect(() => {
+    if (!audioUnlocked || localStorage.getItem("paymentVoiceEnabled") !== "true") return;
+    if (!orders || orders.length === 0) return;
+
+    // find latest paid order not yet spoken
+    const pendingPaid = orders
+      .filter(o => (o.paymentStatus || "").toLowerCase() === "paid" && !spokenPaidOrderIdsRef.current.has(o.id))
+      .sort((a, b) => {
+        const ta = toDateSafe(a);
+        const tb = toDateSafe(b);
+        if (ta && tb) return tb - ta;
+        return 0;
+      });
+
+    if (pendingPaid.length > 0) {
+      const order = pendingPaid[0];
+      spokenPaidOrderIdsRef.current.add(order.id);
+      const text = buildVoiceText(order);
+      speakNow(text);
+    }
+  }, [audioUnlocked, orders]);
+
+
   /* ------------------ Filtering ------------------ */
   const filteredOrders = orders.filter((o) => {
     if (todayOnly && !isToday(o)) return false;
     if (filter === "All") return true;
-    return (o.paymentStatus || "").toLowerCase().includes(filter.toLowerCase());
+    return ((o.orderStatus || o.paymentStatus) || "").toLowerCase().includes(filter.toLowerCase());
   });
 
   const filterBtn = (name) => ({
@@ -591,10 +677,10 @@ const tryPlayNewOrderSound = () => {
                 padding: "6px 12px",
                 borderRadius: 8,
                 fontWeight: 700,
-                ...getStatusStyle(o.paymentStatus),
+                ...getStatusStyle(o.orderStatus || o.paymentStatus),
               }}
             >
-              {o.paymentStatus}
+              {o.orderStatus || o.paymentStatus}
             </span>
           </div>
 

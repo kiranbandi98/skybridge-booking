@@ -57,6 +57,9 @@ function getFinalStatus(o) {
 }
 
 export default function VendorDashboard() {
+  const [voiceMode, setVoiceMode] = React.useState(
+    localStorage.getItem("voiceAnnounceMode") || "AMOUNT_ONLY"
+  );
   const { shopId } = useParams();
   const [orders, setOrders] = useState([]);
   const [newOrdersCount, setNewOrdersCount] = useState(0);
@@ -112,6 +115,8 @@ export default function VendorDashboard() {
     let totalOrders = 0;
     let ordersToday = 0;
     let revenueToday = 0;
+    let revenueMonth = 0;
+    let revenueYear = 0;
 
     let preparing = 0;
     let ready = 0;
@@ -123,8 +128,14 @@ export default function VendorDashboard() {
 
       if (created && isSameDay(created, now)) {
         ordersToday += 1;
-        if ((o.paymentStatus || "").toLowerCase() === "completed") {
+        if ((o.paymentStatus || "").toLowerCase() === "paid") {
         revenueToday += Number(o.totalAmount || 0);
+        if (created.getMonth() === now.getMonth() && created.getFullYear() === now.getFullYear()) {
+          revenueMonth += Number(o.totalAmount || 0);
+        }
+        if (created.getFullYear() === now.getFullYear()) {
+          revenueYear += Number(o.totalAmount || 0);
+        }
       }
       }
 
@@ -138,6 +149,8 @@ export default function VendorDashboard() {
       totalOrders,
       ordersToday,
       revenueToday,
+      revenueMonth,
+      revenueYear,
       preparing,
       ready,
       completed,
@@ -261,9 +274,67 @@ export default function VendorDashboard() {
           <h1 style={{ margin: 0 }}>Vendor POS Dashboard</h1>
           <div style={{ color: "#666", marginTop: 6 }}>
             Live orders & quick actions
-          </div>
+          
+      {/* 🔊 Voice Announcement Settings */}
+      <div style={{ marginTop: 12, marginBottom: 20 }}>
+        <div style={{ fontWeight: 700, marginBottom: 6 }}>Voice Announcement</div>
+        <label style={{ marginRight: 16 }}>
+          <input
+            type="radio"
+            name="voiceMode"
+            checked={(localStorage.getItem("voiceAnnounceMode") || "AMOUNT_ONLY") === "AMOUNT_ONLY"}
+            onChange={() => localStorage.setItem("voiceAnnounceMode", "AMOUNT_ONLY")}
+          />
+          Amount only
+        </label>
+        <label>
+          <input
+            type="radio"
+            name="voiceMode"
+            checked={localStorage.getItem("voiceAnnounceMode") === "AMOUNT_WITH_ITEMS"}
+            onChange={() => localStorage.setItem("voiceAnnounceMode", "AMOUNT_WITH_ITEMS")}
+          />
+          Amount + items
+        </label>
+      </div>
+</div>
         </div>
       </header>
+      {/* 🔊 Payment Voice */}
+      <div style={{ margin: "12px 0", padding: 12, border: "1px solid #ddd", borderRadius: 8 }}>
+        <button
+          onClick={() => {
+            const u = new SpeechSynthesisUtterance("Payment voice enabled");
+            window.speechSynthesis.speak(u);
+            localStorage.setItem("paymentVoiceEnabled", "true");
+          }}
+          style={{ padding: "8px 14px", marginBottom: 10 }}
+        >
+          🔊 Enable Payment Voice
+        </button>
+
+        <div>
+          <label style={{ marginRight: 16 }}>
+            <input
+              type="radio"
+              name="voiceMode"
+              checked={(localStorage.getItem("voiceAnnounceMode") || "AMOUNT_WITH_ITEMS") === "AMOUNT_ONLY"}
+              onChange={() => localStorage.setItem("voiceAnnounceMode", "AMOUNT_ONLY")}
+            />
+            Amount only
+          </label>
+          <label>
+            <input
+              type="radio"
+              name="voiceMode"
+              checked={(localStorage.getItem("voiceAnnounceMode") || "AMOUNT_WITH_ITEMS") === "AMOUNT_WITH_ITEMS"}
+              onChange={() => localStorage.setItem("voiceAnnounceMode", "AMOUNT_WITH_ITEMS")}
+            />
+            Amount + items
+          </label>
+        </div>
+      </div>
+
 
       {/* --------------------------------------------- */}
       {/* The rest below is your original code — UNTOUCHED */}
@@ -295,6 +366,20 @@ export default function VendorDashboard() {
           <div style={{ color: "#666" }}>Revenue Today</div>
           <div style={{ fontSize: 22, fontWeight: 800 }}>
             ₹{stats.revenueToday}
+          </div>
+        </div>
+
+        <div style={cardStyle}>
+          <div style={{ color: "#666" }}>Revenue This Month</div>
+          <div style={{ fontSize: 22, fontWeight: 800 }}>
+            ₹{stats.revenueMonth}
+          </div>
+        </div>
+
+        <div style={cardStyle}>
+          <div style={{ color: "#666" }}>Revenue This Year</div>
+          <div style={{ fontSize: 22, fontWeight: 800 }}>
+            ₹{stats.revenueYear}
           </div>
         </div>
 
