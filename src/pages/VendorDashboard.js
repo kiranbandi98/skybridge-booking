@@ -73,7 +73,7 @@ export default function VendorDashboard() {
   function handleLogout() {
     const auth = getAuth();
     signOut(auth)
-      .then(() => navigate("/vendor/login"))
+      .then(() => (window.location.hash = "#/vendor/login"))
       .catch((e) => console.error("Logout failed:", e));
   }
 
@@ -199,16 +199,12 @@ export default function VendorDashboard() {
       <div style={{ display: "flex", gap: 16 }}>
 
         {/* Dashboard */}
-        <Link
-          to={`/vendor/${shopId}`}
+        <a href={`/#/vendor/${shopId}`}
           style={navLink}
-        >
-          Dashboard
-        </Link>
+        >Dashboard</a>
 
         {/* Orders */}
-        <Link
-            to={`/vendor/${shopId}/orders`}
+        <a href={`/#/vendor/${shopId}/orders`}
           onClick={clearNewOrders}
           style={navLink}
         >
@@ -227,15 +223,12 @@ export default function VendorDashboard() {
               {newOrdersCount}
             </span>
           )}
-        </Link>
+        </a>
 
         {/* Menu */}
-        <Link
-          to={`/vendor/${shopId}/menu`}
+        <a href={`/#/vendor/${shopId}/menu`}
           style={navLink}
-        >
-          Menu
-        </Link>
+        >Menu</a>
 
         {/* Logout */}
         <button
