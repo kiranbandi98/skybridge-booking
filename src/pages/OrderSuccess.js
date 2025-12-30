@@ -105,7 +105,7 @@ export default function OrderSuccess() {
         </div>
       )}
 
-      {/* ✅ Track Order (FIXED) */}
+      {/* ✅ Track Order */}
       <div style={{ marginTop: 25 }}>
         <Link
           to={`/track/${shopId}/${orderId}`}
@@ -125,8 +125,9 @@ export default function OrderSuccess() {
         </Link>
       </div>
 
+      {/* ✅ BACK TO MENU (FIXED — HASHROUTER SAFE) */}
       <button
-        onClick={() => (window.location.href = `/shop/${shopId}`)}
+        onClick={() => (window.location.hash = `#/shop/${shopId}`)}
         style={{
           marginTop: 20,
           padding: "12px 25px",
