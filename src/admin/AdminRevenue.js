@@ -34,9 +34,16 @@ ChartJS.register(
   Legend
 );
 
+/* eslint-disable no-loop-func */
 export default function AdminRevenue() {
   const db = getFirestore();
   const [loading, setLoading] = useState(true);
+
+  /* =======================
+     DATE RANGE FILTER
+  ======================= */
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
 
   /* =======================
      BASIC TOTALS
@@ -60,8 +67,8 @@ export default function AdminRevenue() {
   ======================= */
   const [shopRevenue, setShopRevenue] = useState([]);
 
-  useEffect(() => {
-    const fetchRevenue = async () => {
+  
+  const fetchRevenue = async (range = null) => {
       try {
         const shopsSnapshot = await getDocs(collection(db, "shops"));
 
@@ -83,7 +90,11 @@ export default function AdminRevenue() {
           now.getDate()
         );
 
-        const monthStart = new Date(
+        
+        const rangeFrom = range?.from ? new Date(range.from) : null;
+        const rangeTo = range?.to ? new Date(range.to + "T23:59:59") : null;
+
+const monthStart = new Date(
           now.getFullYear(),
           now.getMonth(),
           1
@@ -118,6 +129,8 @@ export default function AdminRevenue() {
             if (!data.createdAt?.toDate) return;
 
             const created = data.createdAt.toDate();
+
+            if ((rangeFrom && created < rangeFrom) || (rangeTo && created > rangeTo)) return;
 
             totalOrders += 1;
             totalRevenue += amount;
@@ -176,10 +189,14 @@ export default function AdminRevenue() {
       } finally {
         setLoading(false);
       }
-    };
+    
+  };
 
+
+  useEffect(() => {
     fetchRevenue();
   }, [db]);
+
 
   if (loading) {
     return <p>Loading revenue...</p>;
@@ -231,6 +248,14 @@ export default function AdminRevenue() {
   return (
     <div style={{ padding: 20 }}>
       <h3>Revenue Summary (Admin)</h3>
+
+      {/* DATE FILTER UI */}
+      <div style={{ marginBottom: 16 }}>
+        <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />{" "}
+        <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />{" "}
+        <button onClick={() => fetchRevenue({ from: fromDate, to: toDate })}>Apply</button>{" "}
+        <button onClick={() => { setFromDate(""); setToDate(""); fetchRevenue(); }}>Clear</button>
+      </div>
 
       {/* TOTALS */}
       <div style={{ marginTop: 16 }}>
