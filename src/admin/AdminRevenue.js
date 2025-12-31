@@ -245,6 +245,34 @@ const monthStart = new Date(
   ======================= */
   const topVendors = shopRevenue.slice(0, 5);
 
+
+  /* =======================
+     CSV EXPORT HELPERS
+  ======================= */
+  const downloadCSV = (filename, rows) => {
+    if (!rows || !rows.length) return;
+
+    const header = Object.keys(rows[0]).join(",");
+    const csv = [
+      header,
+      ...rows.map(row =>
+        Object.values(row)
+          .map(v => `"${String(v).replace(/"/g, '""')}"`)
+          .join(",")
+      )
+    ].join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+
   return (
     <div style={{ padding: 20 }}>
       <h3>Revenue Summary (Admin)</h3>
@@ -283,6 +311,7 @@ const monthStart = new Date(
       <hr />
 
       <h4>Shop-wise Revenue</h4>
+      <button onClick={() => downloadCSV("shop-wise-revenue.csv", shopRevenue)}>Export Shop-wise CSV</button>
       <table border="1" cellPadding="8" style={{ marginTop: 12 }}>
         <thead>
           <tr>
@@ -310,6 +339,7 @@ const monthStart = new Date(
           TOP VENDORS LEADERBOARD
       ======================= */}
       <h4>🏆 Top 5 Vendors</h4>
+      <button onClick={() => downloadCSV("top-vendors.csv", topVendors)}>Export Top Vendors CSV</button>
       <table border="1" cellPadding="8" style={{ marginTop: 12 }}>
         <thead>
           <tr>
