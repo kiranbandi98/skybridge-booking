@@ -46,8 +46,8 @@ export default function VendorRegister() {
         phone: form.phone,
         email: form.email,
 
-        vendorUid: vendorUser.uid, // existing field
-        ownerUid: vendorUser.uid,  // ✅ ADDED (required for login redirect)
+        vendorUid: vendorUser.uid,
+        ownerUid: vendorUser.uid, // ✅ required for login redirect
 
         settings: {
           upi: form.upi,
@@ -63,7 +63,6 @@ export default function VendorRegister() {
         id: docRef.id,
         ...form,
       });
-
     } catch (err) {
       console.error("Vendor registration failed:", err);
       alert("Vendor registration failed. See console for details.");
@@ -194,8 +193,9 @@ export default function VendorRegister() {
               borderRadius: 8,
             }}
           >
+            {/* ✅ HASHROUTER SAFE QR */}
             <QRCodeCanvas
-              value={`${window.location.origin}/menu/${createdShop.id}`}
+              value={`${window.location.origin}/#/shop/${createdShop.id}`}
               size={200}
             />
           </div>
