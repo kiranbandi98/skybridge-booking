@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { db } from "../utils/firebase";
-import { collection, onSnapshot } from "firebase/firestore";
+import { collection, onSnapshot, doc, getDoc } from "firebase/firestore";
 
 // ⭐ Added for Logout
 import { getAuth, signOut } from "firebase/auth";
@@ -68,6 +68,35 @@ export default function VendorDashboard() {
   const previousIds = useRef(new Set());
 
   const navigate = useNavigate();
+  /* =====================================================
+     🔒 ADMIN DISABLE GUARD (ADDED - MINIMAL)
+  ===================================================== */
+  useEffect(() => {
+    const checkShopActive = async () => {
+      try {
+        const ref = doc(db, "shops", shopId);
+        const snap = await getDoc(ref);
+
+        if (!snap.exists()) {
+          alert("Shop not found");
+          await signOut(getAuth());
+          navigate("/vendor/login");
+          return;
+        }
+
+        if (snap.data().active === false) {
+          alert("Your shop has been disabled by admin.");
+          await signOut(getAuth());
+          navigate("/vendor/login");
+        }
+      } catch (e) {
+        console.error("Admin disable check failed:", e);
+      }
+    };
+    checkShopActive();
+  }, [shopId, navigate]);
+  /* ===================================================== */
+
 
   // ⭐ Logout function
   function handleLogout() {
