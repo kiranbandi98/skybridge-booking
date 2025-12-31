@@ -1,16 +1,46 @@
 import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { db } from "../utils/firebase";
-import { collection, onSnapshot } from "firebase/firestore";
+import { collection, onSnapshot, doc, getDoc } from "firebase/firestore";
 import { useCart } from "../context/CartContext";
 
 export default function ShopMenuPage() {
   const { shopId } = useParams();
   const { addToCart, cart } = useCart();
   const [menu, setMenu] = useState([]);
+  const [shopActive, setShopActive] = useState(true);
   const [addedId, setAddedId] = useState(null);
 
+  
+  /* =====================================================
+     🚫 SHOP ACTIVE CHECK (ADMIN CONTROL)
+  ===================================================== */
   useEffect(() => {
+    if (!shopId) return;
+
+    const checkShop = async () => {
+      try {
+        const ref = doc(db, "shops", shopId);
+        const snap = await getDoc(ref);
+
+        if (!snap.exists()) {
+          setShopActive(false);
+          return;
+        }
+
+        setShopActive(snap.data().active !== false);
+      } catch (e) {
+        console.error("Shop active check failed:", e);
+        setShopActive(false);
+      }
+    };
+
+    checkShop();
+  }, [shopId]);
+  /* ===================================================== */
+
+
+useEffect(() => {
     if (!shopId) return;
 
     const colRef = collection(db, "shops", shopId, "menu");
@@ -36,6 +66,11 @@ export default function ShopMenuPage() {
   return (
     <div style={{ padding: 20, maxWidth: 900, margin: "0 auto" }}>
       <h2>Menu</h2>
+      {!shopActive && (
+        <p style={{ color: 'red', fontWeight: 600 }}>
+          🚫 This shop is temporarily unavailable
+        </p>
+      )}
       <p>Select your items</p>
 
       <div style={{ marginBottom: 20 }}>
@@ -51,7 +86,7 @@ export default function ShopMenuPage() {
               fontWeight: 600,
             }}
           >
-            🛒 View Cart ({cart.length})
+            {shopActive ? `🛒 View Cart (${cart.length})` : "Shop Unavailable"}
           </button>
         </Link>
       </div>
@@ -89,6 +124,7 @@ export default function ShopMenuPage() {
 
             <button
               onClick={() => handleAdd(item)}
+              disabled={!shopActive}
               style={{
                 background:
                   addedId === item.id ? "#2ecc71" : "#28a745",
