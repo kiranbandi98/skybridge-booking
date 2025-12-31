@@ -56,7 +56,7 @@ export default function AdminRevenue() {
   const [lastFiveYearsData, setLastFiveYearsData] = useState({});
 
   /* =======================
-     SHOP-WISE DATA (NEW)
+     SHOP-WISE DATA
   ======================= */
   const [shopRevenue, setShopRevenue] = useState([]);
 
@@ -223,13 +223,16 @@ export default function AdminRevenue() {
     ],
   };
 
+  /* =======================
+     TOP 5 VENDORS (NEW)
+  ======================= */
+  const topVendors = shopRevenue.slice(0, 5);
+
   return (
     <div style={{ padding: 20 }}>
       <h3>Revenue Summary (Admin)</h3>
 
-      {/* =======================
-          TOTALS
-      ======================= */}
+      {/* TOTALS */}
       <div style={{ marginTop: 16 }}>
         <p><strong>Total Orders:</strong> {stats.totalOrders}</p>
         <p><strong>Total Revenue:</strong> ₹{stats.totalRevenue}</p>
@@ -254,11 +257,7 @@ export default function AdminRevenue() {
 
       <hr />
 
-      {/* =======================
-          SHOP-WISE REVENUE (NEW)
-      ======================= */}
       <h4>Shop-wise Revenue</h4>
-
       <table border="1" cellPadding="8" style={{ marginTop: 12 }}>
         <thead>
           <tr>
@@ -273,6 +272,33 @@ export default function AdminRevenue() {
             <tr key={shop.shopId}>
               <td>{shop.shopName}</td>
               <td>{shop.shopId}</td>
+              <td>{shop.totalOrders}</td>
+              <td>₹{shop.totalRevenue}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <hr />
+
+      {/* =======================
+          TOP VENDORS LEADERBOARD
+      ======================= */}
+      <h4>🏆 Top 5 Vendors</h4>
+      <table border="1" cellPadding="8" style={{ marginTop: 12 }}>
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Shop Name</th>
+            <th>Total Orders</th>
+            <th>Total Revenue (₹)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {topVendors.map((shop, index) => (
+            <tr key={shop.shopId}>
+              <td>{index + 1}</td>
+              <td>{shop.shopName}</td>
               <td>{shop.totalOrders}</td>
               <td>₹{shop.totalRevenue}</td>
             </tr>
