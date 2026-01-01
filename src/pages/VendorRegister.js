@@ -195,7 +195,7 @@ export default function VendorRegister() {
           >
             {/* ✅ HASHROUTER SAFE QR */}
             <QRCodeCanvas
-              value={`${window.location.origin}/#/shop/${createdShop.id}`}
+              value={`https://skybridge-booking.onrender.com/#/shop/${createdShop.id}`}
               size={200}
             />
           </div>
