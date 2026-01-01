@@ -7,11 +7,12 @@ import { useCart } from "../context/CartContext";
 export default function ShopMenuPage() {
   const { shopId } = useParams();
   const { addToCart, cart } = useCart();
+
   const [menu, setMenu] = useState([]);
   const [shopActive, setShopActive] = useState(true);
   const [addedId, setAddedId] = useState(null);
+  const [loading, setLoading] = useState(true); // ✅ FIX 1
 
-  
   /* =====================================================
      🚫 SHOP ACTIVE CHECK (ADMIN CONTROL)
   ===================================================== */
@@ -25,22 +26,24 @@ export default function ShopMenuPage() {
 
         if (!snap.exists()) {
           setShopActive(false);
-          return;
+        } else {
+          setShopActive(snap.data().active !== false);
         }
-
-        setShopActive(snap.data().active !== false);
       } catch (e) {
         console.error("Shop active check failed:", e);
         setShopActive(false);
+      } finally {
+        setLoading(false); // ✅ FIX 2
       }
     };
 
     checkShop();
   }, [shopId]);
-  /* ===================================================== */
 
-
-useEffect(() => {
+  /* =====================================================
+     🍽️ LIVE MENU LISTENER
+  ===================================================== */
+  useEffect(() => {
     if (!shopId) return;
 
     const colRef = collection(db, "shops", shopId, "menu");
@@ -57,36 +60,40 @@ useEffect(() => {
     return () => unsubscribe();
   }, [shopId]);
 
-  const handleAdd = (item) => {
-    addToCart(item);
-    setAddedId(item.id);
-    setTimeout(() => setAddedId(null), 800);
-  };
+  // ✅ FIX 3 — WAIT FOR FIRESTORE (CRITICAL FOR MOBILE)
+  if (loading) {
+    return <p style={{ padding: 20 }}>Loading shop…</p>;
+  }
 
   return (
     <div style={{ padding: 20, maxWidth: 900, margin: "0 auto" }}>
       <h2>Menu</h2>
+
       {!shopActive && (
-        <p style={{ color: 'red', fontWeight: 600 }}>
+        <p style={{ color: "red", fontWeight: 600 }}>
           🚫 This shop is temporarily unavailable
         </p>
       )}
+
       <p>Select your items</p>
 
       <div style={{ marginBottom: 20 }}>
         <Link to={`/cart/${shopId}`}>
           <button
+            disabled={!shopActive}
             style={{
               background: "#0d6efd",
               color: "white",
               padding: "10px 16px",
               borderRadius: 8,
               border: "none",
-              cursor: "pointer",
+              cursor: shopActive ? "pointer" : "not-allowed",
               fontWeight: 600,
             }}
           >
-            {shopActive ? `🛒 View Cart (${cart.length})` : "Shop Unavailable"}
+            {shopActive
+              ? `🛒 View Cart (${cart.length})`
+              : "Shop Unavailable"}
           </button>
         </Link>
       </div>
@@ -132,7 +139,7 @@ useEffect(() => {
                 padding: "8px 14px",
                 borderRadius: 8,
                 border: "none",
-                cursor: "pointer",
+                cursor: shopActive ? "pointer" : "not-allowed",
                 fontWeight: 600,
               }}
             >
@@ -143,4 +150,10 @@ useEffect(() => {
       ))}
     </div>
   );
+
+  function handleAdd(item) {
+    addToCart(item);
+    setAddedId(item.id);
+    setTimeout(() => setAddedId(null), 800);
+  }
 }
