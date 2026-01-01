@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { db } from "../utils/firebase";
 import { doc, onSnapshot } from "firebase/firestore";
+import { QRCodeCanvas } from "qrcode.react";
 
 export default function OrderSuccess() {
   // ✅ MULTI-VENDOR PARAMS
@@ -125,7 +126,7 @@ export default function OrderSuccess() {
         </Link>
       </div>
 
-      {/* ✅ BACK TO MENU (FIXED — HASHROUTER SAFE) */}
+      {/* ✅ BACK TO MENU (HASHROUTER SAFE) */}
       <button
         onClick={() => (window.location.hash = `#/shop/${shopId}`)}
         style={{
@@ -141,6 +142,59 @@ export default function OrderSuccess() {
       >
         Back to Menu
       </button>
+
+      {/* =====================================================
+         🚀 VENDOR PROMOTION SECTION (NEW - BOTTOM ONLY)
+      ===================================================== */}
+      <div
+        style={{
+          marginTop: 50,
+          padding: 25,
+          borderRadius: 14,
+          background: "linear-gradient(135deg, #f8f9fa, #ffffff)",
+          boxShadow: "0 4px 14px rgba(0,0,0,0.1)",
+          textAlign: "center",
+        }}
+      >
+        <h2>🚀 Start Free Today</h2>
+        <p style={{ fontSize: 16, fontWeight: 500 }}>
+          📲 Scan the QR code below <br />
+          Register your shop & start accepting QR orders instantly.
+        </p>
+
+        <div style={{ margin: "20px 0" }}>
+          <QRCodeCanvas
+            value="https://skybridge-booking.onrender.com/#/vendor/register"
+            size={180}
+          />
+        </div>
+
+        <h3>💡 Own a Shop / Hotel / Restaurant?</h3>
+        <p>Run your business smarter with <b>SkyBridge</b></p>
+
+        <div style={{ textAlign: "left", maxWidth: 450, margin: "0 auto" }}>
+          <p>🔔 <b>Instant payment voice alert</b><br />Know immediately when money is received.</p>
+          <p>📱 <b>Simple QR ordering</b><br />Customers scan and place orders easily.</p>
+          <p>📊 <b>Live dashboard</b><br />See today’s revenue and orders in real time.</p>
+          <p>📦 <b>Clear orders</b><br />Every order is visible and tracked on your screen.</p>
+          <p>👷 <b>Easy for staff</b><br />No confusion, no stress during busy hours.</p>
+        </div>
+
+        <div style={{ marginTop: 20, textAlign: "left", maxWidth: 450, marginInline: "auto" }}>
+          <h4>✨ Why shop owners choose SkyBridge</h4>
+          <ul>
+            <li>Built for real rush hours, not demos</li>
+            <li>Works even when staff is busy and phones are ignored</li>
+            <li>Orders start only after payment is successful</li>
+            <li>No fake payments</li>
+            <li>Clear payments, clear orders, zero confusion</li>
+            <li>Reliable every day, not just when it’s quiet</li>
+          </ul>
+        </div>
+
+        <p style={{ marginTop: 20, fontWeight: 600 }}>🌟 SkyBridge</p>
+        <p style={{ fontStyle: "italic" }}>Scan. Order. Pay. Done.</p>
+      </div>
     </div>
   );
 }
