@@ -73,7 +73,7 @@ export default function CheckoutPage() {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ amount: amountInPaise }),
+          body: JSON.stringify({ amount: amountInPaise, currency: "INR" }),
         }
       );
 
@@ -106,6 +106,7 @@ export default function CheckoutPage() {
             const orderId = await saveOrderToFirestore(shopId, {
               customerName: form.name,
               phone: form.phone,
+              email: "customer@skybridge.app",
               orderType: form.orderType,
               address: form.address,
               table: form.table,
