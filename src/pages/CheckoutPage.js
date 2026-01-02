@@ -97,6 +97,7 @@ export default function CheckoutPage() {
         currency: "INR",
         name: "SkyBridge",
         description: "Food Order Payment",
+        image: "https://skybridge-booking.onrender.com/logo192.png",
         order_id: razorpayOrderId,
 
         handler: async function (response) {
