@@ -3,7 +3,6 @@ import React, { useState } from "react";
 import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
 import { useNavigate, Link } from "react-router-dom";
 
-// 🔥 ADD THESE IMPORTS
 import { db } from "../utils/firebase";
 import { collection, query, where, getDocs } from "firebase/firestore";
 
@@ -22,7 +21,6 @@ export default function VendorLogin() {
     try {
       const auth = getAuth();
 
-      // 1️⃣ Sign in vendor
       const userCredential = await signInWithEmailAndPassword(
         auth,
         email,
@@ -31,7 +29,15 @@ export default function VendorLogin() {
 
       const user = userCredential.user;
 
-      // 2️⃣ Find shop that belongs to this vendor
+      // ✅ BLOCK LOGIN IF EMAIL NOT VERIFIED
+      if (!user.emailVerified) {
+        await auth.signOut();
+        setError("Please verify your email before logging in.");
+        setLoading(false);
+        return;
+      }
+
+      // 🔍 Find vendor shop
       const q = query(
         collection(db, "shops"),
         where("ownerUid", "==", user.uid)
@@ -40,26 +46,24 @@ export default function VendorLogin() {
       const snapshot = await getDocs(q);
 
       if (snapshot.empty) {
-        setError("No shop found for this vendor.");
+        setError("No shop found for this vendor account.");
         setLoading(false);
         return;
       }
 
-      // 3️⃣ Redirect to vendor dashboard (auto)
       const shopDoc = snapshot.docs[0];
       const shopId = shopDoc.id;
 
       navigate(`/vendor/${shopId}`);
-
     } catch (err) {
       console.error("Vendor login failed:", err);
 
       if (err.code === "auth/user-not-found") {
-        setError("No vendor found with this email");
+        setError("No vendor account found with this email.");
       } else if (err.code === "auth/wrong-password") {
-        setError("Incorrect password");
+        setError("Incorrect password. Please try again.");
       } else {
-        setError("Invalid email or password");
+        setError("Unable to login. Please check your details.");
       }
     }
 
@@ -67,10 +71,14 @@ export default function VendorLogin() {
   };
 
   return (
-    <div style={{ maxWidth: 420, margin: "40px auto", padding: 20 }}>
-      <h2 style={{ textAlign: "center", color: "#0366a6" }}>
+    <div style={{ maxWidth: 420, margin: "60px auto", padding: 20 }}>
+      <h2 style={{ textAlign: "center", color: "#0366a6", marginBottom: 6 }}>
         Vendor Login
       </h2>
+
+      <p style={{ textAlign: "center", fontSize: 13, color: "#555" }}>
+        Login using your registered email and password
+      </p>
 
       <form
         onSubmit={handleLogin}
@@ -79,6 +87,7 @@ export default function VendorLogin() {
           padding: 20,
           borderRadius: 10,
           boxShadow: "0 6px 18px rgba(0,0,0,0.08)",
+          marginTop: 20,
         }}
       >
         {error && (
@@ -87,9 +96,10 @@ export default function VendorLogin() {
           </div>
         )}
 
-        <label>Email</label>
+        <label>Email address</label>
         <input
           type="email"
+          placeholder="your@email.com"
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
@@ -99,17 +109,26 @@ export default function VendorLogin() {
         <label>Password</label>
         <input
           type="password"
+          placeholder="Enter your password"
           required
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           style={inputStyle}
         />
 
+        <div style={{ textAlign: "right", marginBottom: 10 }}>
+          <small>
+            <Link to="/vendor/forgot-password">
+              Forgot your password?
+            </Link>
+          </small>
+        </div>
+
         <button
           type="submit"
           disabled={loading}
           style={{
-            marginTop: 12,
+            marginTop: 6,
             width: "100%",
             background: "#0366a6",
             padding: "10px 12px",
@@ -123,11 +142,22 @@ export default function VendorLogin() {
           {loading ? "Logging in…" : "Login"}
         </button>
 
-        <div style={{ marginTop: 12, textAlign: "center" }}>
+        <div style={{ marginTop: 14, textAlign: "center" }}>
           <small>
-            Don’t have a shop?{" "}
+            Don’t have a vendor account?{" "}
             <Link to="/vendor/register">Register your shop</Link>
           </small>
+        </div>
+
+        <div
+          style={{
+            marginTop: 16,
+            fontSize: 12,
+            color: "#777",
+            textAlign: "center",
+          }}
+        >
+          Email verification is required before login.
         </div>
       </form>
     </div>
