@@ -1,6 +1,7 @@
 // src/pages/VendorRegister.js
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { getAuth, createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
 
 export default function VendorRegister() {
   const [form, setForm] = useState({
@@ -10,22 +11,48 @@ export default function VendorRegister() {
     email: "",
   });
 
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const navigate = useNavigate();
+  const auth = getAuth();
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
+    setError("");
+    setLoading(true);
 
-    // ✅ OPTION B – EMAIL FIRST
-    // No password
-    // No Firebase auth
-    // No shop creation
-    // Only move to email verification
+    try {
+      // 🔐 Firebase requires a password → use temporary random one
+      const tempPassword = Math.random().toString(36).slice(-10);
 
-    navigate("/vendor/verify-email", {
-      state: {
-        registrationData: form,
-      },
-    });
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        form.email,
+        tempPassword
+      );
+
+      const user = userCredential.user;
+
+      // 📧 Send verification email (LINK-BASED)
+      await sendEmailVerification(user);
+
+      // 👉 Move to "Check your email" screen
+      navigate("/vendor/check-email", {
+        state: {
+          registrationData: form,
+        },
+      });
+    } catch (err) {
+      console.error("Registration failed:", err);
+
+      if (err.code === "auth/email-already-in-use") {
+        setError("This email is already registered.");
+      } else {
+        setError("Failed to send verification email. Please try again.");
+      }
+    }
+
+    setLoading(false);
   }
 
   return (
@@ -43,6 +70,12 @@ export default function VendorRegister() {
           boxShadow: "0 6px 18px rgba(0,0,0,0.08)",
         }}
       >
+        {error && (
+          <div style={{ color: "#c62828", marginBottom: 10 }}>
+            {error}
+          </div>
+        )}
+
         <label>Shop Name</label>
         <input
           required
@@ -102,6 +135,7 @@ export default function VendorRegister() {
 
         <button
           type="submit"
+          disabled={loading}
           style={{
             marginTop: 20,
             width: "100%",
@@ -114,12 +148,12 @@ export default function VendorRegister() {
             cursor: "pointer",
           }}
         >
-          Verify Email
+          {loading ? "Sending verification email..." : "Verify Email"}
         </button>
 
         <p style={{ marginTop: 12, fontSize: 12, color: "#666" }}>
-          You must verify your email before creating a password and completing
-          registration.
+          We’ll send a verification link to your email.
+          You must verify before setting a password.
         </p>
       </form>
     </div>

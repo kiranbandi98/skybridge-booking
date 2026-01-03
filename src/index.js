@@ -21,7 +21,9 @@ import VendorRegister from "./pages/VendorRegister";
 import VendorLogin from "./pages/VendorLogin";
 import VendorVerifyEmail from "./pages/VendorVerifyEmail";
 import VendorSetPassword from "./pages/VendorSetPassword";
-
+import VendorForgotPassword from "./pages/VendorForgotPassword";
+import VendorResetPassword from "./pages/VendorResetPassword";
+import VendorCheckEmail from "./pages/VendorCheckEmail"; // ✅ NEW
 import VendorDashboard from "./pages/VendorDashboard";
 import VendorMenuEditor from "./pages/VendorMenuEditor";
 import VendorOrders from "./pages/VendorOrders";
@@ -78,9 +80,13 @@ root.render(
               VENDOR AUTH
           ===================== */}
           <Route path="/vendor/register" element={<VendorRegister />} />
+          <Route path="/vendor/check-email" element={<VendorCheckEmail />} /> {/* ✅ NEW */}
           <Route path="/vendor/login" element={<VendorLogin />} />
           <Route path="/vendor/verify-email" element={<VendorVerifyEmail />} />
           <Route path="/vendor/set-password" element={<VendorSetPassword />} />
+          <Route path="/vendor/forgot-password" element={<VendorForgotPassword />} />
+          <Route path="/vendor/reset-password" element={<VendorResetPassword />} />
+
 
 
           {/* =====================
