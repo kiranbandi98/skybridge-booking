@@ -28,7 +28,7 @@ export default function VendorRegister() {
     setLoading(true);
 
     try {
-      // 1️⃣ Create Firebase Auth Vendor User
+      // 1️⃣ Create vendor auth account
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         form.email,
@@ -37,7 +37,7 @@ export default function VendorRegister() {
 
       const vendorUser = userCredential.user;
 
-      // 2️⃣ Create Shop Document in Firestore
+      // 2️⃣ Create shop document
       const shopsCol = collection(db, "shops");
 
       const docRef = await addDoc(shopsCol, {
@@ -47,7 +47,7 @@ export default function VendorRegister() {
         email: form.email,
 
         vendorUid: vendorUser.uid,
-        ownerUid: vendorUser.uid, // ✅ required for login redirect
+        ownerUid: vendorUser.uid,
 
         settings: {
           upi: form.upi,
@@ -58,14 +58,13 @@ export default function VendorRegister() {
         menu: {},
       });
 
-      // Save shop info for success screen
       setCreatedShop({
         id: docRef.id,
         ...form,
       });
     } catch (err) {
       console.error("Vendor registration failed:", err);
-      alert("Vendor registration failed. See console for details.");
+      alert("Vendor registration failed. Please check your details.");
     }
 
     setLoading(false);
@@ -90,9 +89,13 @@ export default function VendorRegister() {
           <label>Shop Name</label>
           <input
             required
+            placeholder="Enter shop name"
             value={form.shopName}
             onChange={(e) =>
-              setForm({ ...form, shopName: e.target.value })
+              setForm({
+                ...form,
+                shopName: e.target.value.replace(/[^A-Za-z ]/g, ""),
+              })
             }
             style={inputStyle}
           />
@@ -100,19 +103,32 @@ export default function VendorRegister() {
           <label>Owner Name</label>
           <input
             required
+            placeholder="Enter owner name"
             value={form.ownerName}
             onChange={(e) =>
-              setForm({ ...form, ownerName: e.target.value })
+              setForm({
+                ...form,
+                ownerName: e.target.value.replace(/[^A-Za-z ]/g, ""),
+              })
             }
             style={inputStyle}
           />
 
-          <label>Phone</label>
+          <label>Phone Number</label>
           <input
             required
+            type="tel"
+            placeholder="10-digit Indian mobile number"
+            pattern="[6-9][0-9]{9}"
+            maxLength={10}
+            inputMode="numeric"
+            title="Enter a valid 10-digit Indian mobile number"
             value={form.phone}
             onChange={(e) =>
-              setForm({ ...form, phone: e.target.value })
+              setForm({
+                ...form,
+                phone: e.target.value.replace(/\D/g, ""),
+              })
             }
             style={inputStyle}
           />
@@ -121,6 +137,7 @@ export default function VendorRegister() {
           <input
             required
             type="email"
+            placeholder="you@example.com"
             value={form.email}
             onChange={(e) =>
               setForm({ ...form, email: e.target.value })
@@ -132,6 +149,7 @@ export default function VendorRegister() {
           <input
             required
             type="password"
+            placeholder="Create a password"
             value={form.password}
             onChange={(e) =>
               setForm({ ...form, password: e.target.value })
@@ -141,8 +159,11 @@ export default function VendorRegister() {
 
           <label>UPI ID (optional)</label>
           <input
+            placeholder="example@upi"
             value={form.upi}
-            onChange={(e) => setForm({ ...form, upi: e.target.value })}
+            onChange={(e) =>
+              setForm({ ...form, upi: e.target.value })
+            }
             style={inputStyle}
           />
 
@@ -163,6 +184,10 @@ export default function VendorRegister() {
           >
             {loading ? "Creating Shop..." : "Create Shop"}
           </button>
+
+          <p style={{ marginTop: 12, fontSize: 12, color: "#666" }}>
+            Email verification will be required to activate your vendor account.
+          </p>
         </form>
       )}
 
@@ -185,20 +210,10 @@ export default function VendorRegister() {
 
           <p>Share this QR code with customers:</p>
 
-          <div
-            style={{
-              display: "inline-block",
-              background: "#fff",
-              padding: 10,
-              borderRadius: 8,
-            }}
-          >
-            {/* ✅ HASHROUTER SAFE QR */}
-            <QRCodeCanvas
-              value={`https://skybridge-booking.onrender.com/#/shop/${createdShop.id}`}
-              size={200}
-            />
-          </div>
+          <QRCodeCanvas
+            value={`https://skybridge-booking.onrender.com/#/shop/${createdShop.id}`}
+            size={200}
+          />
 
           <div style={{ marginTop: 20 }}>
             <button
