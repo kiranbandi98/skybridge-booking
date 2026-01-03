@@ -1,115 +1,113 @@
 // src/pages/VendorCheckEmail.jsx
-import React, { useState } from "react";
-import { useLocation, useNavigate, Link } from "react-router-dom";
-import { getAuth } from "firebase/auth";
+import React, { useEffect, useState } from "react";
+import { getAuth, sendEmailVerification } from "firebase/auth";
+import { useNavigate } from "react-router-dom";
 
 export default function VendorCheckEmail() {
-  const navigate = useNavigate();
-  const location = useLocation();
   const auth = getAuth();
+  const navigate = useNavigate();
 
-  const [checking, setChecking] = useState(false);
-  const [error, setError] = useState("");
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
 
-  // Data from VendorRegister
-  const registrationData = location.state?.registrationData;
+  useEffect(() => {
+    const user = auth.currentUser;
 
-  // Safety check
-  if (!registrationData) {
-    return (
-      <div style={{ maxWidth: 420, margin: "60px auto", padding: 20 }}>
-        <h3>Invalid access</h3>
-        <p>Please start vendor registration again.</p>
-        <Link to="/vendor/register">Go to Vendor Registration</Link>
-      </div>
-    );
-  }
-
-  async function handleCheckVerification() {
-    setError("");
-    setChecking(true);
-
-    try {
-      const user = auth.currentUser;
-
-      if (!user) {
-        setError("Session expired. Please register again.");
-        setChecking(false);
-        return;
-      }
-
-      // 🔄 Refresh user data from Firebase
-      await user.reload();
-
-      if (user.emailVerified) {
-        navigate("/vendor/set-password", {
-          state: {
-            registrationData,
-          },
-        });
-      } else {
-        setError(
-          "Email not verified yet. Please check your inbox and click the verification link."
-        );
-      }
-    } catch (err) {
-      console.error("Verification check failed:", err);
-      setError("Failed to check verification. Please try again.");
+    if (!user) {
+      // No logged-in user → go back to register
+      navigate("/vendor/register");
+      return;
     }
 
-    setChecking(false);
-  }
+    setEmail(user.email);
+  }, [auth, navigate]);
+
+  const handleResend = async () => {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    try {
+      setLoading(true);
+      await sendEmailVerification(user);
+      setMessage("Verification email resent. Please check your inbox or spam.");
+    } catch (err) {
+      console.error("Resend failed:", err);
+      setMessage("Failed to resend email. Try again later.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerified = async () => {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    await user.reload();
+
+    if (user.emailVerified) {
+      navigate("/vendor/set-password");
+    } else {
+      alert("Email not verified yet. Please click the link in your email.");
+    }
+  };
 
   return (
-    <div style={{ maxWidth: 420, margin: "60px auto", padding: 20 }}>
+    <div style={{ maxWidth: 420, margin: "80px auto", padding: 20 }}>
       <h2 style={{ textAlign: "center", color: "#0366a6" }}>
         Verify Your Email
       </h2>
 
-      <p style={{ textAlign: "center", fontSize: 13, color: "#555" }}>
+      <p style={{ textAlign: "center", fontSize: 14 }}>
         We’ve sent a verification link to:
         <br />
-        <b>{registrationData.email}</b>
-        <br />
-        <br />
-        Please open your email and click the verification link to continue.
+        <b>{email}</b>
       </p>
 
-      {error && (
-        <div style={{ color: "#c62828", marginTop: 10, textAlign: "center" }}>
-          {error}
-        </div>
-      )}
-
       <button
-        onClick={handleCheckVerification}
-        disabled={checking}
-        style={{
-          marginTop: 20,
-          width: "100%",
-          background: "#0366a6",
-          padding: "12px 16px",
-          border: "none",
-          borderRadius: 10,
-          color: "white",
-          fontWeight: 700,
-          cursor: "pointer",
-        }}
+        onClick={handleVerified}
+        style={primaryButton}
       >
-        {checking ? "Checking..." : "I’ve verified my email"}
+        I’ve verified my email
       </button>
 
-      <div style={{ marginTop: 16, textAlign: "center", fontSize: 13 }}>
-        Didn’t get the email? Check spam or{" "}
-        <span
-          style={{ color: "#0366a6", cursor: "pointer" }}
-          onClick={() =>
-            alert("Resend verification can be added later")
-          }
-        >
-          resend link
-        </span>
-      </div>
+      <p style={{ textAlign: "center", marginTop: 16, fontSize: 13 }}>
+        Didn’t get the email?
+      </p>
+
+      <button
+        onClick={handleResend}
+        disabled={loading}
+        style={secondaryButton}
+      >
+        {loading ? "Resending..." : "Resend verification email"}
+      </button>
+
+      {message && (
+        <p style={{ marginTop: 12, textAlign: "center", fontSize: 13 }}>
+          {message}
+        </p>
+      )}
     </div>
   );
 }
+
+const primaryButton = {
+  width: "100%",
+  padding: "12px",
+  background: "#0366a6",
+  color: "#fff",
+  border: "none",
+  borderRadius: 8,
+  fontWeight: 700,
+  cursor: "pointer",
+};
+
+const secondaryButton = {
+  width: "100%",
+  padding: "10px",
+  background: "#eee",
+  border: "1px solid #ccc",
+  borderRadius: 8,
+  cursor: "pointer",
+};
