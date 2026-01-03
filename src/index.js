@@ -19,6 +19,9 @@ import TrackOrder from "./pages/TrackOrder";
 ======================= */
 import VendorRegister from "./pages/VendorRegister";
 import VendorLogin from "./pages/VendorLogin";
+import VendorVerifyEmail from "./pages/VendorVerifyEmail";
+import VendorSetPassword from "./pages/VendorSetPassword";
+
 import VendorDashboard from "./pages/VendorDashboard";
 import VendorMenuEditor from "./pages/VendorMenuEditor";
 import VendorOrders from "./pages/VendorOrders";
@@ -76,6 +79,9 @@ root.render(
           ===================== */}
           <Route path="/vendor/register" element={<VendorRegister />} />
           <Route path="/vendor/login" element={<VendorLogin />} />
+          <Route path="/vendor/verify-email" element={<VendorVerifyEmail />} />
+          <Route path="/vendor/set-password" element={<VendorSetPassword />} />
+
 
           {/* =====================
               VENDOR PROTECTED
