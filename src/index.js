@@ -20,7 +20,7 @@ import TrackOrder from "./pages/TrackOrder";
 import VendorRegister from "./pages/VendorRegister";
 import VendorLogin from "./pages/VendorLogin";
 import VendorSetPassword from "./pages/VendorSetPassword";
-import VendorForgotPassword from "./pages/VendorForgotPassword";
+import VendorForgotPassword from "./pages/VendorResetPassword_TEMP";
 import VendorResetPassword from "./pages/VendorResetPassword";
 import VendorCheckEmail from "./pages/VendorCheckEmail"; // ✅ NEW
 import VendorDashboard from "./pages/VendorDashboard";
