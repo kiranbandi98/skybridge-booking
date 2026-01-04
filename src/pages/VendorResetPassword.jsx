@@ -1,4 +1,4 @@
-// src/pages/VendorResetPassword.jsx
+// UPDATED VERSION
 import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -6,8 +6,7 @@ export default function VendorResetPassword() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Firebase already handled password reset.
-    // Just redirect user to login after a short delay.
+    // Give user a moment to read message, then redirect
     const timer = setTimeout(() => {
       navigate("/vendor/login");
     }, 2000);
@@ -16,7 +15,14 @@ export default function VendorResetPassword() {
   }, [navigate]);
 
   return (
-    <div style={{ maxWidth: 420, margin: "80px auto", padding: 20, textAlign: "center" }}>
+    <div
+      style={{
+        maxWidth: 420,
+        margin: "80px auto",
+        padding: 20,
+        textAlign: "center",
+      }}
+    >
       <h2 style={{ color: "#0366a6" }}>Password Updated</h2>
 
       <p style={{ fontSize: 14, color: "#555", marginTop: 10 }}>
@@ -24,7 +30,7 @@ export default function VendorResetPassword() {
       </p>
 
       <p style={{ fontSize: 13, color: "#777" }}>
-        Redirecting you to login...
+        Redirecting you to login…
       </p>
     </div>
   );
