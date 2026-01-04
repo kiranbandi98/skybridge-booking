@@ -23,6 +23,7 @@ export default function VendorCheckEmail() {
     setEmail(user.email);
   }, [auth, navigate]);
 
+  // Optional resend (use carefully)
   const handleResend = async () => {
     const user = auth.currentUser;
     if (!user) return;
@@ -30,25 +31,14 @@ export default function VendorCheckEmail() {
     try {
       setLoading(true);
       await sendEmailVerification(user);
-      setMessage("Verification email resent. Please check your inbox or spam.");
+      setMessage(
+        "Verification email resent. Please check Inbox or Spam folder."
+      );
     } catch (err) {
       console.error("Resend failed:", err);
-      setMessage("Failed to resend email. Try again later.");
+      setMessage("Too many requests. Please try again later.");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleVerified = async () => {
-    const user = auth.currentUser;
-    if (!user) return;
-
-    await user.reload();
-
-    if (user.emailVerified) {
-      navigate("/vendor/set-password");
-    } else {
-      alert("Email not verified yet. Please click the link in your email.");
     }
   };
 
@@ -64,14 +54,22 @@ export default function VendorCheckEmail() {
         <b>{email}</b>
       </p>
 
+      <p style={{ textAlign: "center", fontSize: 13, color: "#555" }}>
+        After verifying your email, you must set your password before logging in.
+      </p>
+
+      <p style={{ textAlign: "center", fontSize: 13, color: "#777" }}>
+        👉 On the login page, click <b>“Forgot your password”</b> to set it.
+      </p>
+
       <button
-        onClick={handleVerified}
+        onClick={() => navigate("/vendor/login")}
         style={primaryButton}
       >
-        I’ve verified my email
+        Continue to Login
       </button>
 
-      <p style={{ textAlign: "center", marginTop: 16, fontSize: 13 }}>
+      <p style={{ textAlign: "center", marginTop: 18, fontSize: 13 }}>
         Didn’t get the email?
       </p>
 
@@ -101,6 +99,7 @@ const primaryButton = {
   borderRadius: 8,
   fontWeight: 700,
   cursor: "pointer",
+  marginTop: 20,
 };
 
 const secondaryButton = {

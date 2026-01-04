@@ -1,7 +1,15 @@
 // src/pages/VendorRegister.js
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getAuth, createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
+import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  sendEmailVerification,
+} from "firebase/auth";
+
+// 🔥 ADD FIRESTORE IMPORTS
+import { db } from "../utils/firebase";
+import { doc, setDoc } from "firebase/firestore";
 
 export default function VendorRegister() {
   const [form, setForm] = useState({
@@ -13,6 +21,7 @@ export default function VendorRegister() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
   const navigate = useNavigate();
   const auth = getAuth();
 
@@ -33,22 +42,28 @@ export default function VendorRegister() {
 
       const user = userCredential.user;
 
+      // 🔥 CREATE SHOP DOCUMENT IN FIRESTORE (THIS FIXES LOGIN ISSUE)
+      await setDoc(doc(db, "shops", user.uid), {
+        ownerUid: user.uid,
+        shopName: form.shopName,
+        ownerName: form.ownerName,
+        phone: form.phone,
+        email: form.email,
+        createdAt: new Date(),
+      });
+
       // 📧 Send verification email (LINK-BASED)
       await sendEmailVerification(user);
 
       // 👉 Move to "Check your email" screen
-      navigate("/vendor/check-email", {
-        state: {
-          registrationData: form,
-        },
-      });
+      navigate("/vendor/check-email");
     } catch (err) {
       console.error("Registration failed:", err);
 
       if (err.code === "auth/email-already-in-use") {
         setError("This email is already registered.");
       } else {
-        setError("Failed to send verification email. Please try again.");
+        setError("Failed to register vendor. Please try again.");
       }
     }
 
