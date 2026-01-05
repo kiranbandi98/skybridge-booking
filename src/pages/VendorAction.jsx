@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { auth } from "../utils/firebase";
 import { applyActionCode } from "firebase/auth";
+import { auth } from "../utils/firebase";
 
 export default function VendorAction() {
   const navigate = useNavigate();
@@ -19,32 +19,37 @@ export default function VendorAction() {
       return;
     }
 
-    // ✅ EMAIL VERIFICATION
+    // 🔐 EMAIL VERIFICATION
     if (mode === "verifyEmail") {
       applyActionCode(auth, oobCode)
         .then(() => {
           setStatus("verified");
-          setTimeout(() => navigate("/vendor/login"), 2500);
+          // ✅ IMPORTANT: redirect ONLY to login
+          setTimeout(() => {
+            navigate("/vendor/login");
+          }, 2500);
         })
         .catch(() => {
-          setError("Email verification failed or expired.");
+          setError("Email verification failed or link expired.");
           setStatus("error");
         });
       return;
     }
 
-    // ✅ PASSWORD RESET (ONLY REDIRECT)
+    // 🔁 PASSWORD RESET → forward to reset page
     if (mode === "resetPassword") {
       navigate(`/vendor/reset-password?oobCode=${oobCode}`);
       return;
     }
 
-    // ✅ EMAIL CHANGE
+    // 🔁 EMAIL CHANGE (future-safe)
     if (mode === "verifyAndChangeEmail") {
       applyActionCode(auth, oobCode)
         .then(() => {
           setStatus("emailChanged");
-          setTimeout(() => navigate("/vendor/login"), 2500);
+          setTimeout(() => {
+            navigate("/vendor/login");
+          }, 2500);
         })
         .catch(() => {
           setError("Email change verification failed.");
@@ -57,9 +62,10 @@ export default function VendorAction() {
     setStatus("error");
   }, [navigate]);
 
+  // UI states
   if (status === "loading") return <h2>Processing…</h2>;
-  if (status === "verified") return <h2>Email verified successfully.</h2>;
-  if (status === "emailChanged") return <h2>Email updated successfully.</h2>;
+  if (status === "verified") return <h2>Email verified successfully. Redirecting to login…</h2>;
+  if (status === "emailChanged") return <h2>Email updated successfully. Redirecting to login…</h2>;
   if (status === "error") return <h2>{error}</h2>;
 
   return null;
