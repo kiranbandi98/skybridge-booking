@@ -14,25 +14,23 @@ export default function VendorCheckEmail() {
   useEffect(() => {
     const user = auth.currentUser;
 
-    if (!user) {
-      // No logged-in user → go back to register
-      navigate("/vendor/register");
-      return;
+    if (user?.email) {
+      setEmail(user.email);
     }
+  }, [auth]);
 
-    setEmail(user.email);
-  }, [auth, navigate]);
-
-  // Optional resend (use carefully)
   const handleResend = async () => {
     const user = auth.currentUser;
-    if (!user) return;
+    if (!user) {
+      setMessage("Please login again to resend verification email.");
+      return;
+    }
 
     try {
       setLoading(true);
       await sendEmailVerification(user);
       setMessage(
-        "Verification email resent. Please check Inbox or Spam folder."
+        "Verification email resent. Please check your inbox or spam folder."
       );
     } catch (err) {
       console.error("Resend failed:", err);
@@ -48,29 +46,25 @@ export default function VendorCheckEmail() {
         Verify Your Email
       </h2>
 
-      <p style={{ textAlign: "center", fontSize: 14 }}>
+      <p style={{ textAlign: "center", fontSize: 14, color: "#555" }}>
         We’ve sent a verification link to:
         <br />
-        <b>{email}</b>
+        <b>{email || "your email address"}</b>
       </p>
 
-      <p style={{ textAlign: "center", fontSize: 13, color: "#555" }}>
-        After verifying your email, you must set your password before logging in.
-      </p>
-
-      <p style={{ textAlign: "center", fontSize: 13, color: "#777" }}>
-        👉 On the login page, click <b>“Forgot your password”</b> to set it.
+      <p style={{ textAlign: "center", fontSize: 13, color: "#666" }}>
+        Please verify your email before logging in.
       </p>
 
       <button
         onClick={() => navigate("/vendor/login")}
         style={primaryButton}
       >
-        Continue to Login
+        Go to Login
       </button>
 
       <p style={{ textAlign: "center", marginTop: 18, fontSize: 13 }}>
-        Didn’t get the email?
+        Didn’t receive the email?
       </p>
 
       <button
@@ -78,11 +72,18 @@ export default function VendorCheckEmail() {
         disabled={loading}
         style={secondaryButton}
       >
-        {loading ? "Resending..." : "Resend verification email"}
+        {loading ? "Resending..." : "Resend Verification Email"}
       </button>
 
       {message && (
-        <p style={{ marginTop: 12, textAlign: "center", fontSize: 13 }}>
+        <p
+          style={{
+            marginTop: 12,
+            textAlign: "center",
+            fontSize: 13,
+            color: "#2e7d32",
+          }}
+        >
           {message}
         </p>
       )}

@@ -1,0 +1,47 @@
+[33m744518d[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m Auto redirect to login after password reset
+[33m567729c[m Fix vendor auth flow and cleanup old files
+[33m14e6d16[m Block vendor login if email not verified
+[33m1576946[m Restore VendorForgotPassword page
+[33mfeb30c0[m Add resend email verification for vendors
+[33mde0b164[m Fix vendor forgot/reset password imports and routes
+[33m231e377[m Fix case-sensitive VendorResetPassword import for Render
+[33m8e6c14a[m Fix case-sensitive VendorForgotPassword import for Render
+[33m5331ea3[m Fix vendor auth routing and remove deprecated OTP flow
+[33md7b378c[m Implement Firebase email verification flow for vendors
+[33mfce068f[m Fix hooks order in VendorVerifyEmail
+[33m2c7b6ee[m Implement email-first vendor registration flow
+[33md62c567[m Finalize vendor registration UX and input validation
+[33m618caed[m fix: add valid Razorpay image to prevent v2 checkout fallback
+[33mf6b43a6[m fix: Razorpay live order flow (full file preserved)
+[33mc7a579e[m chore: switch Razorpay frontend to live mode
+[33m978f128[m chore: switch Razorpay to live keys
+[33m5251cb5[m feat: add vendor promotion QR on order success page
+[33mb777a22[m fix: mobile shop menu loading issue
+[33md1276ce[m fix: generate QR with production shop URL
+[33m7d29bf5[m Add CSV export for admin revenue and leaderboard
+[33m2402f83[m Fix admin revenue date filter scope error
+[33mf08a9fb[m Add top vendors leaderboard to admin revenue
+[33m9401527[m Add shop-wise revenue breakdown to admin panel
+[33m00b72ef[m Block customer ordering for disabled shops
+[33m15b9ad7[m Block vendor dashboard when admin disables shop
+[33maf4470a[m Admin panel foundation completed
+[33m05eb390[m Fix QR code to open customer shop via hash route
+[33m079e177[m Fix customer Back to Menu redirect (HashRouter)
+[33m6ad0731[m Fix VendorOrders navbar hash routing
+[33mb787a48[m Fix Render 404 using HashRouter
+[33m2b93470[m Fix routing on Render using HashRouter
+[33ma0881a7[m Fix routing for Render using HashRouter
+[33m7f5f608[m Add render.yaml for SPA routing
+[33m319f38d[m Fix payment voice TTS and audio unlock
+[33mbb23ea0[m Finalize routing and shop page fix
+[33m91890ab[m Fix routes and SPA fallback
+[33m615dae1[m Update index.js
+[33meb4bde6[m Fix Razorpay order_id response
+[33mfca1af6[m Add backend dependencies for Render
+[33m48f2824[m Render-ready backend config
+[33mc082cc2[m safe backup before restoring vendor menu
+[33ma10ca5f[m add pages folder for restore
+[33ma1298d3[m Initial commit
+[33m06b84df[m openSkyBridge Initial deploy
+[33m5835200[m Added QR scan page
+[33m1abf4ba[m first commit

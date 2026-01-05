@@ -7,7 +7,6 @@ import {
   sendEmailVerification,
 } from "firebase/auth";
 
-// 🔥 ADD FIRESTORE IMPORTS
 import { db } from "../utils/firebase";
 import { doc, setDoc } from "firebase/firestore";
 
@@ -17,6 +16,7 @@ export default function VendorRegister() {
     ownerName: "",
     phone: "",
     email: "",
+    password: "",
   });
 
   const [loading, setLoading] = useState(false);
@@ -31,18 +31,16 @@ export default function VendorRegister() {
     setLoading(true);
 
     try {
-      // 🔐 Firebase requires a password → use temporary random one
-      const tempPassword = Math.random().toString(36).slice(-10);
-
+      // ✅ Create vendor with email + password (no random password)
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         form.email,
-        tempPassword
+        form.password
       );
 
       const user = userCredential.user;
 
-      // 🔥 CREATE SHOP DOCUMENT IN FIRESTORE (THIS FIXES LOGIN ISSUE)
+      // 🔥 Create shop document
       await setDoc(doc(db, "shops", user.uid), {
         ownerUid: user.uid,
         shopName: form.shopName,
@@ -52,16 +50,18 @@ export default function VendorRegister() {
         createdAt: new Date(),
       });
 
-      // 📧 Send verification email (LINK-BASED)
+      // 📧 Send email verification
       await sendEmailVerification(user);
 
-      // 👉 Move to "Check your email" screen
+      // 👉 Redirect to check email screen
       navigate("/vendor/check-email");
     } catch (err) {
       console.error("Registration failed:", err);
 
       if (err.code === "auth/email-already-in-use") {
         setError("This email is already registered.");
+      } else if (err.code === "auth/weak-password") {
+        setError("Password should be at least 6 characters.");
       } else {
         setError("Failed to register vendor. Please try again.");
       }
@@ -148,6 +148,18 @@ export default function VendorRegister() {
           style={inputStyle}
         />
 
+        <label>Password</label>
+        <input
+          required
+          type="password"
+          placeholder="Create a password"
+          value={form.password}
+          onChange={(e) =>
+            setForm({ ...form, password: e.target.value })
+          }
+          style={inputStyle}
+        />
+
         <button
           type="submit"
           disabled={loading}
@@ -163,12 +175,11 @@ export default function VendorRegister() {
             cursor: "pointer",
           }}
         >
-          {loading ? "Sending verification email..." : "Verify Email"}
+          {loading ? "Creating account..." : "Register & Verify Email"}
         </button>
 
         <p style={{ marginTop: 12, fontSize: 12, color: "#666" }}>
-          We’ll send a verification link to your email.
-          You must verify before setting a password.
+          You must verify your email before logging in.
         </p>
       </form>
     </div>
