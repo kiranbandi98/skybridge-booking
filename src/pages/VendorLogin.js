@@ -24,13 +24,11 @@ export default function VendorLogin() {
       const res = await signInWithEmailAndPassword(auth, email, password);
       await res.user.reload();
 
-      // 🔒 BLOCK IF EMAIL NOT VERIFIED
       if (!res.user.emailVerified) {
         setMessage("Please verify your email before logging in.");
         return;
       }
 
-      // 🔍 FIND SHOP (CORRECT COLLECTION)
       const shopRef = doc(db, "shops", res.user.uid);
       const snap = await getDoc(shopRef);
 
@@ -48,45 +46,111 @@ export default function VendorLogin() {
   };
 
   return (
-    <div style={{ maxWidth: 420, margin: "60px auto", padding: 20 }}>
-      <h2>Vendor Login</h2>
-
-      {message && <p>{message}</p>}
-
-      <form onSubmit={handleLogin}>
-        <input
-          type="email"
-          placeholder="Email address"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          style={{ width: "100%", padding: 10, marginBottom: 10 }}
-        />
-
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          style={{ width: "100%", padding: 10, marginBottom: 10 }}
-        />
-
-        <button
-          type="submit"
-          disabled={loading}
-          style={{ width: "100%", padding: 10 }}
+    <div
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "#f4f6f8",
+      }}
+    >
+      <div
+        style={{
+          width: 420,
+          background: "#fff",
+          padding: 30,
+          borderRadius: 10,
+          boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
+        }}
+      >
+        <h2
+          style={{
+            textAlign: "center",
+            marginBottom: 20,
+            color: "#0a66c2",
+          }}
         >
-          {loading ? "Logging in..." : "Login"}
-        </button>
-      </form>
+          Vendor Login
+        </h2>
 
-      <p style={{ marginTop: 10 }}>
-        <a href="#/vendor/reset-password">Forgot your password?</a>
-      </p>
+        {message && (
+          <p style={{ color: "red", marginBottom: 10, textAlign: "center" }}>
+            {message}
+          </p>
+        )}
 
-      <p>
-        Don’t have a vendor account?{" "}
-        <a href="#/vendor/register">Register your shop</a>
-      </p>
+        <form onSubmit={handleLogin}>
+          <input
+            type="email"
+            placeholder="Email address"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            style={{
+              width: "100%",
+              padding: "12px",
+              marginBottom: 12,
+              borderRadius: 6,
+              border: "1px solid #ccc",
+              fontSize: 14,
+            }}
+          />
+
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            style={{
+              width: "100%",
+              padding: "12px",
+              marginBottom: 16,
+              borderRadius: 6,
+              border: "1px solid #ccc",
+              fontSize: 14,
+            }}
+          />
+
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              width: "100%",
+              padding: "12px",
+              background: "#0a66c2",
+              color: "#fff",
+              border: "none",
+              borderRadius: 6,
+              fontSize: 15,
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            {loading ? "Logging in..." : "Login"}
+          </button>
+        </form>
+
+        <div style={{ marginTop: 15, textAlign: "center" }}>
+          <a
+            href="#/vendor/reset-password"
+            style={{ color: "#0a66c2", textDecoration: "none" }}
+          >
+            Forgot your password?
+          </a>
+        </div>
+
+        <div style={{ marginTop: 10, textAlign: "center" }}>
+          Don’t have a vendor account?{" "}
+          <a
+            href="#/vendor/register"
+            style={{ color: "#0a66c2", textDecoration: "none", fontWeight: 600 }}
+          >
+            Register your shop
+          </a>
+        </div>
+      </div>
     </div>
   );
 }
