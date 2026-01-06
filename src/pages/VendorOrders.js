@@ -33,7 +33,7 @@ const Navbar = ({ shopId }) => {
 
     <div style={{ display: "flex", gap: 12 }}>
       <a
-        href={`/#/vendor/${shopId}`}
+        href={`/#/vendor/shop/${shopId}`}
         style={{
           textDecoration: "none",
           background: "#0366d6",
@@ -47,7 +47,7 @@ const Navbar = ({ shopId }) => {
       </a>
 
       <a
-        href={`/#/vendor/${shopId}/orders`}
+        href={`/#/vendor/shop/${shopId}/orders`}
 
         style={{
           textDecoration: "none",
@@ -62,7 +62,7 @@ const Navbar = ({ shopId }) => {
       </a>
 
       <a
-        href={`/#/vendor/${shopId}/menu`}
+        href={`/#/vendor/shop/${shopId}/menu`}
 
         style={{
           textDecoration: "none",

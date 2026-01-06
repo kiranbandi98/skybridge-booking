@@ -1,18 +1,16 @@
-import React from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   Navigate,
   Outlet,
   useLocation,
   useParams,
 } from "react-router-dom";
-import { getAuth } from "firebase/auth";
-
-import { useEffect, useRef, useState } from "react";
+import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "../utils/firebase";
 
 /* =========================
-   🔔 GLOBAL VENDOR ALARM LOGIC
+   🔔 GLOBAL VENDOR ALARM
 ========================= */
 function useVendorOrderAlarm(enabled) {
   const { shopId } = useParams();
@@ -27,17 +25,15 @@ function useVendorOrderAlarm(enabled) {
     if (!enabled) return;
 
     const unlock = () => {
-      try {
-        newOrderAudio.current.muted = true;
-        newOrderAudio.current
-          .play()
-          .then(() => {
-            newOrderAudio.current.pause();
-            newOrderAudio.current.muted = false;
-            setAudioUnlocked(true);
-          })
-          .catch(() => {});
-      } catch {}
+      newOrderAudio.current.muted = true;
+      newOrderAudio.current
+        .play()
+        .then(() => {
+          newOrderAudio.current.pause();
+          newOrderAudio.current.muted = false;
+          setAudioUnlocked(true);
+        })
+        .catch(() => {});
       document.removeEventListener("click", unlock);
     };
 
@@ -51,10 +47,9 @@ function useVendorOrderAlarm(enabled) {
     const colRef = collection(db, "shops", shopId, "orders");
     const unsub = onSnapshot(colRef, (snapshot) => {
       const currentIds = new Set(snapshot.docs.map((d) => d.id));
-      const prevIds = previousOrdersRef.current;
 
       snapshot.docs.forEach((doc) => {
-        if (!prevIds.has(doc.id) && !isRinging) {
+        if (!previousOrdersRef.current.has(doc.id) && !isRinging) {
           newOrderAudio.current.loop = true;
           newOrderAudio.current.play().catch(() => {});
           setIsRinging(true);
@@ -78,42 +73,59 @@ function useVendorOrderAlarm(enabled) {
 }
 
 /* =========================
-   🛡️ PROTECTED ROUTE (FIXED)
+   🛡️ PROTECTED VENDOR ROUTE
 ========================= */
 export default function ProtectedVendorRoute() {
   const auth = getAuth();
-  const user = auth.currentUser;
   const location = useLocation();
 
-  /* =========================
-     🔑 DETECT FIREBASE EMAIL ACTIONS
-  ========================= */
-  const hash = location.hash || "";
-  const isEmailAction =
-    hash.includes("mode=verifyEmail") ||
-    hash.includes("mode=resetPassword");
+  const [user, setUser] = useState(null);
+  const [authReady, setAuthReady] = useState(false);
 
-  /* =========================
-     🔓 PUBLIC ROUTES
-  ========================= */
-  const isPublicRoute =
-    isEmailAction ||
-    location.pathname.startsWith("/vendor/action") ||
-    location.pathname.startsWith("/vendor/reset-password") ||
-    location.pathname.startsWith("/vendor/forgot-password") ||
-    location.pathname.startsWith("/vendor/login");
+  // 🔑 Proper Firebase auth restore
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      setUser(firebaseUser);
+      setAuthReady(true);
+    });
+    return () => unsubscribe();
+  }, [auth]);
 
-  // ✅ Hooks ALWAYS run (React-safe)
+  // 🔓 Public vendor routes (ONLY auth-related)
+  const publicPaths = [
+    "/vendor/login",
+    "/vendor/register",
+    "/vendor/check-email",
+    "/vendor/forgot-password",
+    "/vendor/reset-password",
+  ];
+
+  const isPublicRoute = publicPaths.some((path) =>
+    location.pathname.startsWith(path)
+  );
+
+  // 🔔 Alarm should run only for authenticated vendor pages
   useVendorOrderAlarm(!isPublicRoute);
 
-  // 🔓 Allow public + Firebase action routes
+  // ⏳ Wait for Firebase to finish restoring auth
+  if (!authReady) {
+    return null; // or spinner
+  }
+
+  // 🔓 Allow public routes
   if (isPublicRoute) {
     return <Outlet />;
   }
 
-  // 🔒 Protect vendor routes
+  // 🔒 Block protected routes if not logged in
   if (!user) {
-    return <Navigate to="/vendor/login" replace />;
+    return (
+      <Navigate
+        to="/vendor/login"
+        replace
+        state={{ from: location }}
+      />
+    );
   }
 
   return <Outlet />;

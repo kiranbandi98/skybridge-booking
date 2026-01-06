@@ -1,6 +1,5 @@
-// src/pages/VendorMenuEditor.js
 import React, { useEffect, useState } from "react";
-import { db } from "../utils/firebase";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   collection,
   addDoc,
@@ -11,8 +10,8 @@ import {
   orderBy,
   query,
 } from "firebase/firestore";
-import { useParams, Link } from "react-router-dom";
 import { getAuth, signOut } from "firebase/auth";
+import { db } from "../utils/firebase";
 
 /* -----------------------------------------
    NAVBAR INSERT (Safe)
@@ -33,8 +32,7 @@ const Navbar = ({ shopId }) => (
     <div style={{ fontWeight: 700, fontSize: 18 }}>Vendor Menu Editor</div>
 
     <div style={{ display: "flex", gap: 12 }}>
-      <a
-        href={`/vendor/${shopId}`}
+      <Link to={`/vendor/shop/${shopId}`}
         style={{
           textDecoration: "none",
           background: "#0366d6",
@@ -45,10 +43,9 @@ const Navbar = ({ shopId }) => (
         }}
       >
         Dashboard
-      </a>
+      </Link>
 
-      <a
-        href={`/vendor/orders`}
+      <Link to={`/vendor/shop/${shopId}/orders`}
         style={{
           textDecoration: "none",
           background: "#0366d6",
@@ -59,10 +56,9 @@ const Navbar = ({ shopId }) => (
         }}
       >
         Orders
-      </a>
+      </Link>
 
-      <a
-        href={`/vendor/${shopId}/menu`}
+      <Link to={`/vendor/shop/${shopId}/menu`}
         style={{
           textDecoration: "none",
           background: "#0366d6",
@@ -73,7 +69,7 @@ const Navbar = ({ shopId }) => (
         }}
       >
         Menu
-      </a>
+      </Link>
 
       {/* Logout */}
       <button
@@ -194,7 +190,7 @@ export default function VendorMenuEditor() {
       <p>Edit your shop menu in real-time.</p>
 
       {/* Back Button */}
-      <Link to={`/vendor/${shopId}`}>
+      <Link to={`/vendor/shop/${shopId}`}>
         <button
           style={{
             padding: "8px 16px",

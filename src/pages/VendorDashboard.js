@@ -229,7 +229,7 @@ export default function VendorDashboard() {
 
         {/* Dashboard */}
         <Link
-          to={`/vendor/${shopId}`}
+          to={`/vendor/shop/${shopId}`}
           style={navLink}
         >
           Dashboard
@@ -237,7 +237,7 @@ export default function VendorDashboard() {
 
         {/* Orders */}
         <Link
-            to={`/vendor/${shopId}/orders`}
+            to={`/vendor/shop/${shopId}/orders`}
           onClick={clearNewOrders}
           style={navLink}
         >
@@ -260,7 +260,7 @@ export default function VendorDashboard() {
 
         {/* Menu */}
         <Link
-          to={`/vendor/${shopId}/menu`}
+          to={`/vendor/shop/${shopId}/menu`}
           style={navLink}
         >
           Menu

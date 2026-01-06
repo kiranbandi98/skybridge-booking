@@ -20,8 +20,8 @@ import TrackOrder from "./pages/TrackOrder";
 import VendorRegister from "./pages/VendorRegister";
 import VendorLogin from "./pages/VendorLogin";
 import VendorCheckEmail from "./pages/VendorCheckEmail";
-import VendorForgotPassword from "./pages/VendorForgotPassword"; // ✅ STEP-1
-import VendorResetPassword from "./pages/VendorResetPassword";   // ✅ STEP-2
+import VendorForgotPassword from "./pages/VendorForgotPassword";
+import VendorResetPassword from "./pages/VendorResetPassword";
 
 /* =======================
    VENDOR DASHBOARD
@@ -32,9 +32,10 @@ import VendorOrders from "./pages/VendorOrders";
 import VendorOrderDetail from "./pages/VendorOrderDetail";
 
 /* =======================
-   LAYOUT
+   LAYOUT & PROTECTION
 ======================= */
 import VendorLayout from "./components/VendorLayout";
+import ProtectedVendorRoute from "./components/ProtectedVendorRoute";
 
 /* =======================
    SERVICE WORKER (FCM)
@@ -83,12 +84,14 @@ root.render(
           <Route path="/vendor/forgot-password" element={<VendorForgotPassword />} />
           <Route path="/vendor/reset-password" element={<VendorResetPassword />} />
 
-          {/* ================= VENDOR DASHBOARD ================= */}
-          <Route path="/vendor/shop/:shopId/*" element={<VendorLayout />}>
-            <Route index element={<VendorDashboard />} />
-            <Route path="orders" element={<VendorOrders />} />
-            <Route path="orders/:orderId" element={<VendorOrderDetail />} />
-            <Route path="menu" element={<VendorMenuEditor />} />
+          {/* ================= VENDOR DASHBOARD (PROTECTED) ================= */}
+          <Route element={<ProtectedVendorRoute />}>
+            <Route path="/vendor/shop/:shopId/*" element={<VendorLayout />}>
+              <Route index element={<VendorDashboard />} />
+              <Route path="orders" element={<VendorOrders />} />
+              <Route path="orders/:orderId" element={<VendorOrderDetail />} />
+              <Route path="menu" element={<VendorMenuEditor />} />
+            </Route>
           </Route>
 
           {/* ================= FALLBACK ================= */}
