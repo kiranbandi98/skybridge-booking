@@ -16,13 +16,13 @@ import { db } from "../utils/firebase";
 ========================= */
 function useVendorOrderAlarm(enabled) {
   const { shopId } = useParams();
+
   const [audioUnlocked, setAudioUnlocked] = useState(false);
   const [isRinging, setIsRinging] = useState(false);
 
   const newOrderAudio = useRef(new Audio("/sounds/new-order.mp3"));
   const previousOrdersRef = useRef(new Set());
 
-  // Auto-unlock audio
   useEffect(() => {
     if (!enabled) return;
 
@@ -45,7 +45,6 @@ function useVendorOrderAlarm(enabled) {
     return () => document.removeEventListener("click", unlock);
   }, [enabled]);
 
-  // Firestore listener
   useEffect(() => {
     if (!enabled || !shopId || !audioUnlocked) return;
 
@@ -79,27 +78,40 @@ function useVendorOrderAlarm(enabled) {
 }
 
 /* =========================
-   🛡️ PROTECTED ROUTE
+   🛡️ PROTECTED ROUTE (FIXED)
 ========================= */
 export default function ProtectedVendorRoute() {
   const auth = getAuth();
   const user = auth.currentUser;
   const location = useLocation();
 
-  // 🔓 Detect public Firebase routes
-  const isPublicRoute =
-    location.pathname.startsWith("/vendor/action") ||
-    location.pathname.startsWith("/vendor/reset-password");
+  /* =========================
+     🔑 DETECT FIREBASE EMAIL ACTIONS
+  ========================= */
+  const hash = location.hash || "";
+  const isEmailAction =
+    hash.includes("mode=verifyEmail") ||
+    hash.includes("mode=resetPassword");
 
-  // ✅ Hook is ALWAYS called (React-safe)
+  /* =========================
+     🔓 PUBLIC ROUTES
+  ========================= */
+  const isPublicRoute =
+    isEmailAction ||
+    location.pathname.startsWith("/vendor/action") ||
+    location.pathname.startsWith("/vendor/reset-password") ||
+    location.pathname.startsWith("/vendor/forgot-password") ||
+    location.pathname.startsWith("/vendor/login");
+
+  // ✅ Hooks ALWAYS run (React-safe)
   useVendorOrderAlarm(!isPublicRoute);
 
-  // 🔓 Allow Firebase routes through
+  // 🔓 Allow public + Firebase action routes
   if (isPublicRoute) {
     return <Outlet />;
   }
 
-  // 🔒 Normal protection
+  // 🔒 Protect vendor routes
   if (!user) {
     return <Navigate to="/vendor/login" replace />;
   }

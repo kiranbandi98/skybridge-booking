@@ -1,32 +1,42 @@
-import { useEffect, useState } from "react";
-import { applyActionCode } from "firebase/auth";
-import { auth } from "../utils/firebase";
+// src/pages/VendorCheckEmail.js
+import React from "react";
 import { useNavigate } from "react-router-dom";
 
-export default function VendorVerifyEmail() {
+export default function VendorCheckEmail() {
   const navigate = useNavigate();
-  const [status, setStatus] = useState("verifying");
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const mode = params.get("mode");
-    const oobCode = params.get("oobCode");
+  return (
+    <div style={{ maxWidth: 500, margin: "60px auto", textAlign: "center" }}>
+      <h2 style={{ color: "#0366a6" }}>Verify Your Email</h2>
 
-    if (mode !== "verifyEmail" || !oobCode) {
-      setStatus("invalid");
-      return;
-    }
+      <p style={{ marginTop: 20 }}>
+        We have sent a verification link to your email address.
+      </p>
 
-    applyActionCode(auth, oobCode)
-      .then(() => {
-        setStatus("success");
-        setTimeout(() => navigate("/vendor/login"), 3000);
-      })
-      .catch(() => setStatus("error"));
-  }, [navigate]);
+      <p>
+        Please open your Gmail, click the <b>Verify Email</b> link,
+        then come back and log in.
+      </p>
 
-  if (status === "verifying") return <h2>Verifying email...</h2>;
-  if (status === "success") return <h2>Email verified successfully</h2>;
-  if (status === "error") return <h2>Invalid or expired link</h2>;
-  return <h2>Invalid verification link</h2>;
+      <p style={{ fontSize: 13, color: "#666", marginTop: 10 }}>
+        (Check Spam folder if you don’t see the email.)
+      </p>
+
+      <button
+        onClick={() => navigate("/vendor/login")}
+        style={{
+          marginTop: 30,
+          padding: "12px 20px",
+          background: "#0366a6",
+          color: "#fff",
+          border: "none",
+          borderRadius: 8,
+          cursor: "pointer",
+          fontWeight: 600,
+        }}
+      >
+        I have verified my email → Login
+      </button>
+    </div>
+  );
 }

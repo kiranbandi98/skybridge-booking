@@ -15,18 +15,16 @@ import OrderSuccess from "./pages/OrderSuccess";
 import TrackOrder from "./pages/TrackOrder";
 
 /* =======================
-   VENDOR AUTH PAGES
+   VENDOR AUTH (PUBLIC)
 ======================= */
 import VendorRegister from "./pages/VendorRegister";
 import VendorLogin from "./pages/VendorLogin";
 import VendorCheckEmail from "./pages/VendorCheckEmail";
-import VendorResetPassword from "./pages/VendorResetPassword";
-
-/* 🔥 SINGLE FIREBASE ACTION HANDLER */
-import VendorAction from "./pages/VendorAction";
+import VendorForgotPassword from "./pages/VendorForgotPassword"; // ✅ STEP-1
+import VendorResetPassword from "./pages/VendorResetPassword";   // ✅ STEP-2
 
 /* =======================
-   VENDOR DASHBOARD PAGES
+   VENDOR DASHBOARD
 ======================= */
 import VendorDashboard from "./pages/VendorDashboard";
 import VendorMenuEditor from "./pages/VendorMenuEditor";
@@ -62,7 +60,7 @@ root.render(
       <HashRouter>
         <Routes>
 
-          {/* DEFAULT */}
+          {/* ================= PUBLIC ENTRY ================= */}
           <Route path="/" element={<Navigate to="/vendor/login" replace />} />
 
           {/* ================= CUSTOMER ================= */}
@@ -73,26 +71,27 @@ root.render(
             path="/order-success/:shopId/:orderId"
             element={<OrderSuccess />}
           />
-          <Route path="/track/:shopId/:orderId" element={<TrackOrder />} />
+          <Route
+            path="/track/:shopId/:orderId"
+            element={<TrackOrder />}
+          />
 
           {/* ================= VENDOR AUTH (PUBLIC) ================= */}
           <Route path="/vendor/register" element={<VendorRegister />} />
           <Route path="/vendor/login" element={<VendorLogin />} />
           <Route path="/vendor/check-email" element={<VendorCheckEmail />} />
+          <Route path="/vendor/forgot-password" element={<VendorForgotPassword />} />
           <Route path="/vendor/reset-password" element={<VendorResetPassword />} />
 
-          {/* 🔥 FIREBASE EMAIL ACTION (CRITICAL) */}
-          <Route path="/vendor/action" element={<VendorAction />} />
-
-          {/* ================= VENDOR DASHBOARD (NO PROTECTION) ================= */}
-          <Route path="/vendor/:shopId/*" element={<VendorLayout />}>
+          {/* ================= VENDOR DASHBOARD ================= */}
+          <Route path="/vendor/shop/:shopId/*" element={<VendorLayout />}>
             <Route index element={<VendorDashboard />} />
             <Route path="orders" element={<VendorOrders />} />
             <Route path="orders/:orderId" element={<VendorOrderDetail />} />
             <Route path="menu" element={<VendorMenuEditor />} />
           </Route>
 
-          {/* FALLBACK */}
+          {/* ================= FALLBACK ================= */}
           <Route path="*" element={<Navigate to="/vendor/login" replace />} />
 
         </Routes>

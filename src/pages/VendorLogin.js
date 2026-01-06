@@ -1,174 +1,92 @@
 // src/pages/VendorLogin.js
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
-import { useNavigate, Link } from "react-router-dom";
-
+import { doc, getDoc } from "firebase/firestore";
 import { db } from "../utils/firebase";
-import { collection, query, where, getDocs } from "firebase/firestore";
 
 export default function VendorLogin() {
+  const navigate = useNavigate();
+  const auth = getAuth();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
+  const [message, setMessage] = useState("");
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    setError("");
-    setLoading(true);
+    setMessage("");
 
     try {
-      const auth = getAuth();
+      setLoading(true);
 
-      const userCredential = await signInWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
+      const res = await signInWithEmailAndPassword(auth, email, password);
+      await res.user.reload();
 
-      const user = userCredential.user;
-
-      // ✅ BLOCK LOGIN IF EMAIL NOT VERIFIED
-      if (!user.emailVerified) {
-        await auth.signOut();
-        setError("Please verify your email before logging in.");
-        setLoading(false);
+      // 🔒 BLOCK IF EMAIL NOT VERIFIED
+      if (!res.user.emailVerified) {
+        setMessage("Please verify your email before logging in.");
         return;
       }
 
-      // 🔍 Find vendor shop
-      const q = query(
-        collection(db, "shops"),
-        where("ownerUid", "==", user.uid)
-      );
+      // 🔍 FIND SHOP (CORRECT COLLECTION)
+      const shopRef = doc(db, "shops", res.user.uid);
+      const snap = await getDoc(shopRef);
 
-      const snapshot = await getDocs(q);
-
-      if (snapshot.empty) {
-        setError("No shop found for this vendor account.");
-        setLoading(false);
+      if (!snap.exists()) {
+        setMessage("Shop not found for this account.");
         return;
       }
 
-      const shopDoc = snapshot.docs[0];
-      const shopId = shopDoc.id;
-
-      navigate(`/vendor/${shopId}`);
-    } catch (err) {
-      console.error("Vendor login failed:", err);
-
-      if (err.code === "auth/user-not-found") {
-        setError("No vendor account found with this email.");
-      } else if (err.code === "auth/wrong-password") {
-        setError("Incorrect password. Please try again.");
-      } else {
-        setError("Unable to login. Please check your details.");
-      }
+      navigate(`/vendor/shop/${res.user.uid}`);
+    } catch {
+      setMessage("Invalid email or password.");
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   return (
     <div style={{ maxWidth: 420, margin: "60px auto", padding: 20 }}>
-      <h2 style={{ textAlign: "center", color: "#0366a6", marginBottom: 6 }}>
-        Vendor Login
-      </h2>
+      <h2>Vendor Login</h2>
 
-      <p style={{ textAlign: "center", fontSize: 13, color: "#555" }}>
-        Login using your registered email and password
-      </p>
+      {message && <p>{message}</p>}
 
-      <form
-        onSubmit={handleLogin}
-        style={{
-          background: "#fff",
-          padding: 20,
-          borderRadius: 10,
-          boxShadow: "0 6px 18px rgba(0,0,0,0.08)",
-          marginTop: 20,
-        }}
-      >
-        {error && (
-          <div style={{ color: "#c62828", marginBottom: 12 }}>
-            {error}
-          </div>
-        )}
-
-        <label>Email address</label>
+      <form onSubmit={handleLogin}>
         <input
           type="email"
-          placeholder="your@email.com"
-          required
+          placeholder="Email address"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          style={inputStyle}
+          style={{ width: "100%", padding: 10, marginBottom: 10 }}
         />
 
-        <label>Password</label>
         <input
           type="password"
-          placeholder="Enter your password"
-          required
+          placeholder="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          style={inputStyle}
+          style={{ width: "100%", padding: 10, marginBottom: 10 }}
         />
-
-        <div style={{ textAlign: "right", marginBottom: 10 }}>
-          <small>
-            <Link to="/vendor/forgot-password">
-              Forgot your password?
-            </Link>
-          </small>
-        </div>
 
         <button
           type="submit"
           disabled={loading}
-          style={{
-            marginTop: 6,
-            width: "100%",
-            background: "#0366a6",
-            padding: "10px 12px",
-            border: "none",
-            borderRadius: 8,
-            color: "white",
-            fontWeight: 700,
-            cursor: "pointer",
-          }}
+          style={{ width: "100%", padding: 10 }}
         >
-          {loading ? "Logging in…" : "Login"}
+          {loading ? "Logging in..." : "Login"}
         </button>
-
-        <div style={{ marginTop: 14, textAlign: "center" }}>
-          <small>
-            Don’t have a vendor account?{" "}
-            <Link to="/vendor/register">Register your shop</Link>
-          </small>
-        </div>
-
-        <div
-          style={{
-            marginTop: 16,
-            fontSize: 12,
-            color: "#777",
-            textAlign: "center",
-          }}
-        >
-          Email verification is required before login.
-        </div>
       </form>
+
+      <p style={{ marginTop: 10 }}>
+        <a href="#/vendor/reset-password">Forgot your password?</a>
+      </p>
+
+      <p>
+        Don’t have a vendor account?{" "}
+        <a href="#/vendor/register">Register your shop</a>
+      </p>
     </div>
   );
 }
-
-const inputStyle = {
-  width: "100%",
-  padding: 10,
-  marginTop: 6,
-  marginBottom: 10,
-  borderRadius: 8,
-  border: "1px solid #ccc",
-};

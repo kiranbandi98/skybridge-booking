@@ -1,20 +1,24 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Outlet, useParams } from "react-router-dom";
 import { collection, onSnapshot } from "firebase/firestore";
+import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { db } from "../utils/firebase";
 import { registerVendorFCM } from "../utils/fcm";
 
-/**
- * VendorLayout
- * - Global layout for vendor pages
- * - Handles:
- *   1. FCM device registration
- *   2. New order alarm
- *   3. Audio unlock
- */
 export default function VendorLayout() {
   const { shopId } = useParams();
 
+  /* ===============================
+     🔑 Detect Firebase email action
+  =============================== */
+  const hash = window.location.hash || "";
+  const isEmailAction =
+    hash.includes("mode=verifyEmail") ||
+    hash.includes("mode=resetPassword");
+
+  /* ===============================
+     STATE & REFS (ALWAYS RUN)
+  =============================== */
   const [audioUnlocked, setAudioUnlocked] = useState(false);
   const [isRinging, setIsRinging] = useState(false);
 
@@ -22,31 +26,39 @@ export default function VendorLayout() {
   const prevOrderIdsRef = useRef(new Set());
   const firstSnapshotRef = useRef(true);
 
-  /**
-   * 🔔 STEP 1: Register vendor device for FCM
-   * This SHOULD auto-create:
-   * shops/{shopId}/vendorDevices/{token}
-   */
+  /* ===============================
+     🔔 STEP 1: Register vendor FCM
+  =============================== */
   useEffect(() => {
+    if (isEmailAction) return; // ⛔ block during email flows
     if (!shopId) return;
 
-    console.log("🔔 VendorLayout → registering FCM for shop:", shopId);
-    registerVendorFCM(shopId);
-  }, [shopId]);
+    const auth = getAuth();
 
-  /**
-   * 🔊 STEP 2: Initialize alarm audio
-   */
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (!user) return;
+      registerVendorFCM(shopId);
+    });
+
+    return () => unsubscribe();
+  }, [shopId, isEmailAction]);
+
+  /* ===============================
+     🔊 STEP 2: Init alarm audio
+  =============================== */
   useEffect(() => {
+    if (isEmailAction) return;
+
     audioRef.current = new Audio("/sounds/new-order.mp3");
     audioRef.current.loop = true;
-  }, []);
+  }, [isEmailAction]);
 
-  /**
-   * 🔓 STEP 3: Unlock audio on first user click
-   * (Browser requirement)
-   */
+  /* ===============================
+     🔓 STEP 3: Unlock audio
+  =============================== */
   useEffect(() => {
+    if (isEmailAction) return;
+
     const unlockAudio = () => {
       if (!audioRef.current) return;
 
@@ -57,7 +69,6 @@ export default function VendorLayout() {
           audioRef.current.pause();
           audioRef.current.muted = false;
           setAudioUnlocked(true);
-          console.log("🔓 Audio unlocked");
         })
         .catch(() => {});
 
@@ -66,13 +77,13 @@ export default function VendorLayout() {
 
     document.addEventListener("click", unlockAudio, { once: true });
     return () => document.removeEventListener("click", unlockAudio);
-  }, []);
+  }, [isEmailAction]);
 
-  /**
-   * 🔔 STEP 4: Listen for NEW orders
-   * Alarm only triggers on new document
-   */
+  /* ===============================
+     🔔 STEP 4: Listen for new orders
+  =============================== */
   useEffect(() => {
+    if (isEmailAction) return;
     if (!shopId) return;
 
     const ordersRef = collection(db, "shops", shopId, "orders");
@@ -80,7 +91,6 @@ export default function VendorLayout() {
     const unsub = onSnapshot(ordersRef, (snapshot) => {
       const currentIds = new Set(snapshot.docs.map((d) => d.id));
 
-      // First snapshot = baseline only
       if (firstSnapshotRef.current) {
         prevOrderIdsRef.current = currentIds;
         firstSnapshotRef.current = false;
@@ -91,8 +101,6 @@ export default function VendorLayout() {
 
       currentIds.forEach((id) => {
         if (!prevIds.has(id)) {
-          console.log("🆕 New order detected:", id);
-
           if (audioUnlocked && audioRef.current && !isRinging) {
             audioRef.current.play().catch(() => {});
             setIsRinging(true);
@@ -104,11 +112,8 @@ export default function VendorLayout() {
     });
 
     return () => unsub();
-  }, [shopId, audioUnlocked, isRinging]);
+  }, [shopId, audioUnlocked, isRinging, isEmailAction]);
 
-  /**
-   * 🛑 Stop alarm
-   */
   const stopAlarm = () => {
     if (audioRef.current) {
       audioRef.current.pause();
@@ -116,6 +121,13 @@ export default function VendorLayout() {
     }
     setIsRinging(false);
   };
+
+  /* ===============================
+     🚫 FINAL RENDER BLOCK
+  =============================== */
+  if (isEmailAction) {
+    return null;
+  }
 
   return (
     <div>
