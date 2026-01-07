@@ -31,6 +31,16 @@ import VendorOrders from "./pages/VendorOrders";
 import VendorOrderDetail from "./pages/VendorOrderDetail";
 
 /* =======================
+   ADMIN PAGES (ADDED)
+======================= */
+import AdminLogin from "./admin/AdminLogin";
+import AdminLayout from "./admin/AdminLayout";
+import ProtectedAdminRoute from "./admin/ProtectedAdminRoute";
+import AdminVendors from "./admin/AdminVendors";
+import AdminOrders from "./admin/AdminOrders";
+import AdminRevenue from "./admin/AdminRevenue";
+
+/* =======================
    LAYOUT
 ======================= */
 import VendorLayout from "./components/VendorLayout";
@@ -95,6 +105,23 @@ root.render(
             <Route path="orders" element={<VendorOrders />} />
             <Route path="orders/:orderId" element={<VendorOrderDetail />} />
             <Route path="menu" element={<VendorMenuEditor />} />
+          </Route>
+
+          {/* ================= ADMIN AUTH (PUBLIC) ================= */}
+          <Route path="/admin/login" element={<AdminLogin />} />
+
+          {/* ================= ADMIN DASHBOARD (PROTECTED) ================= */}
+          <Route
+            path="/admin"
+            element={
+              <ProtectedAdminRoute>
+                <AdminLayout />
+              </ProtectedAdminRoute>
+            }
+          >
+            <Route path="vendors" element={<AdminVendors />} />
+            <Route path="orders" element={<AdminOrders />} />
+            <Route path="revenue" element={<AdminRevenue />} />
           </Route>
 
           {/* ================= FALLBACK ================= */}
