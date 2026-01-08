@@ -8,7 +8,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyBolTKv0XetkbqvtlsgaI9ldfzt6ETSRws",
   authDomain: "skybridge-vendor.firebaseapp.com",
   projectId: "skybridge-vendor",
-  storageBucket: "skybridge-vendor.appspot.com",
+  storageBucket: "skybridge-vendor.firebasestorage.app",
   messagingSenderId: "1020416526526",
   appId: "1:1020416526526:web:0322b9f8ae2840beddb6ef",
 };

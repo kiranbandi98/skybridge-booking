@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+
 import {
   collection,
   addDoc,
@@ -106,11 +108,11 @@ export default function VendorMenuEditor() {
     name: "",
     price: "",
     img: "",
+    imgFile: null, // stored image URL from Firebase Storage
   });
 
   // -------------------------------
-  // 🔥 Real-time Firestore Listener
-  // -------------------------------
+    
   useEffect(() => {
     const q = query(
       collection(db, `shops/${shopId}/menu`),
@@ -132,20 +134,32 @@ export default function VendorMenuEditor() {
   // ➕ Add New Menu Item
   // -------------------------------
   async function addMenuItem() {
+    const storage = getStorage();
     if (!newItem.name || !newItem.price) {
       alert("Name and Price are required");
       return;
     }
 
     try {
+      let imageUrl = "";
+
+      if (newItem.imgFile) {
+        const imageRef = ref(
+          storage,
+          `menuImages/${shopId}/${Date.now()}_${newItem.imgFile.name}`
+        );
+        await uploadBytes(imageRef, newItem.imgFile);
+        imageUrl = await getDownloadURL(imageRef);
+      }
+
       await addDoc(collection(db, `shops/${shopId}/menu`), {
         name: newItem.name,
         price: Number(newItem.price),
-        img: newItem.img || "",
+        img: imageUrl,
         timestamp: new Date(),
       });
 
-      setNewItem({ name: "", price: "", img: "" });
+      setNewItem({ name: "", price: "", img: "", imgFile: null });
       alert("Menu item added!");
     } catch (error) {
       console.error("Error adding item:", error);
@@ -236,9 +250,11 @@ export default function VendorMenuEditor() {
         />
 
         <input
-          placeholder="Image URL (optional)"
-          value={newItem.img}
-          onChange={(e) => setNewItem({ ...newItem, img: e.target.value })}
+          type="file"
+          accept="image/*"
+          onChange={(e) =>
+            setNewItem({ ...newItem, imgFile: e.target.files[0] })
+          }
           style={inputBox}
         />
 
