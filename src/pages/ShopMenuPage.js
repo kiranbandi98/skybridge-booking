@@ -49,11 +49,15 @@ export default function ShopMenuPage() {
     const colRef = collection(db, "shops", shopId, "menu");
 
     const unsubscribe = onSnapshot(colRef, (snap) => {
-      const items = snap.docs.map((d) => ({
-        id: d.id,
-        ...d.data(),
-        price: Number(d.data().price),
-      }));
+      const items = snap.docs
+        .map((d) => ({
+          id: d.id,
+          ...d.data(),
+          price: Number(d.data().price),
+        }))
+        // ✅ NEW: Hide out-of-stock items (default = in stock)
+        .filter((item) => item.inStock !== false);
+
       setMenu(items);
     });
 
