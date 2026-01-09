@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -97,10 +98,6 @@ const Navbar = ({ shopId }) => (
   </div>
 );
 
-/* -----------------------------------------
-   MAIN COMPONENT (Your original code)
------------------------------------------ */
-
 export default function VendorMenuEditor() {
   const { shopId } = useParams();
   const [menu, setMenu] = useState([]);
@@ -108,11 +105,9 @@ export default function VendorMenuEditor() {
     name: "",
     price: "",
     img: "",
-    imgFile: null, // stored image URL from Firebase Storage
+    imgFile: null,
   });
 
-  // -------------------------------
-    
   useEffect(() => {
     const q = query(
       collection(db, `shops/${shopId}/menu`),
@@ -130,9 +125,6 @@ export default function VendorMenuEditor() {
     return () => unsubscribe();
   }, [shopId]);
 
-  // -------------------------------
-  // ➕ Add New Menu Item
-  // -------------------------------
   async function addMenuItem() {
     const storage = getStorage();
     if (!newItem.name || !newItem.price) {
@@ -167,9 +159,6 @@ export default function VendorMenuEditor() {
     }
   }
 
-  // -------------------------------
-  // ✏️ Update Menu Item
-  // -------------------------------
   async function updateMenuItem(id, field, value) {
     try {
       await updateDoc(doc(db, `shops/${shopId}/menu`, id), {
@@ -180,9 +169,29 @@ export default function VendorMenuEditor() {
     }
   }
 
-  // -------------------------------
-  // ❌ Delete Menu Item
-  // -------------------------------
+  async function replaceMenuImage(itemId, file) {
+    if (!file) return;
+
+    try {
+      const storage = getStorage();
+      const imageRef = ref(
+        storage,
+        `menuImages/${shopId}/${Date.now()}_${file.name}`
+      );
+      await uploadBytes(imageRef, file);
+      const newUrl = await getDownloadURL(imageRef);
+
+      await updateDoc(doc(db, `shops/${shopId}/menu`, itemId), {
+        img: newUrl,
+      });
+
+      alert("Image replaced successfully");
+    } catch (error) {
+      console.error("Replace image error:", error);
+      alert("Failed to replace image");
+    }
+  }
+
   async function deleteMenuItem(id) {
     if (!window.confirm("Delete this item?")) return;
 
@@ -196,14 +205,11 @@ export default function VendorMenuEditor() {
 
   return (
     <div style={{ padding: 20, maxWidth: 900, margin: "0 auto" }}>
-
-      {/* ✅ NEW NAVBAR */}
       <Navbar shopId={shopId} />
 
       <h2>Menu Editor</h2>
       <p>Edit your shop menu in real-time.</p>
 
-      {/* Back Button */}
       <Link to={`/vendor/shop/${shopId}`}>
         <button
           style={{
@@ -220,9 +226,6 @@ export default function VendorMenuEditor() {
         </button>
       </Link>
 
-      {/* -------------------------------
-          Add New Item Section
-      ------------------------------- */}
       <div
         style={{
           background: "white",
@@ -263,9 +266,6 @@ export default function VendorMenuEditor() {
         </button>
       </div>
 
-      {/* -------------------------------
-          Menu List
-      ------------------------------- */}
       <h3>Current Menu</h3>
 
       {menu.length === 0 ? (
@@ -284,7 +284,6 @@ export default function VendorMenuEditor() {
               boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
             }}
           >
-            {/* Image */}
             <img
               src={item.img || "https://via.placeholder.com/80"}
               style={{
@@ -317,9 +316,18 @@ export default function VendorMenuEditor() {
                 onChange={(e) => updateMenuItem(item.id, "img", e.target.value)}
                 style={inputSmall}
               />
+
+              {/* ✅ NEW: Replace Image Input (ADDED, OLD CODE NOT REMOVED) */}
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) =>
+                  replaceMenuImage(item.id, e.target.files[0])
+                }
+                style={inputSmall}
+              />
             </div>
 
-            {/* Delete Button */}
             <button
               onClick={() => deleteMenuItem(item.id)}
               style={{
@@ -341,9 +349,6 @@ export default function VendorMenuEditor() {
   );
 }
 
-/* -------------------------------
-   Reusable Styles
-------------------------------- */
 const inputBox = {
   width: "100%",
   padding: 10,
