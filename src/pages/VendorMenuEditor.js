@@ -171,6 +171,7 @@ export default function VendorMenuEditor() {
         name: newItem.name,
         price: Number(newItem.price),
         img: imageUrl,
+        inStock: true, // ✅ default
         timestamp: new Date(),
       });
 
@@ -191,8 +192,12 @@ export default function VendorMenuEditor() {
       console.error("Update error:", error);
     }
 
+
+    }
+
+
   /* --------------------------------------------------
-     ✅ NEW: Toggle In-Stock / Out-of-Stock (DEFINED)
+     ✅ NEW: Toggle In-Stock / Out-of-Stock (SAFE)
   -------------------------------------------------- */
   async function toggleInStock(itemId, current) {
     try {
@@ -202,8 +207,6 @@ export default function VendorMenuEditor() {
     } catch (error) {
       console.error("Toggle inStock error:", error);
     }
-  }
-
   }
 
   async function replaceMenuImage(itemId, file) {
@@ -364,6 +367,21 @@ export default function VendorMenuEditor() {
                 }
                 style={inputSmall}
               />
+
+              {/* -------------------------------------------------- */}
+              {/* ✅ In-Stock / Out-of-Stock Toggle */}
+              {/* -------------------------------------------------- */}
+              <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <input
+                  type="checkbox"
+                  checked={item.inStock !== false}
+                  onChange={() =>
+                    toggleInStock(item.id, item.inStock !== false)
+                  }
+                />
+                {item.inStock !== false ? "In Stock" : "Out of Stock"}
+              </label>
+
             </div>
 
             <button
