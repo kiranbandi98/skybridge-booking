@@ -152,6 +152,19 @@ export default function ShopMenuPage() {
 
       <p>Select your items</p>
 
+      
+      {/* 🧲 STICKY SEARCH + CATEGORY BAR */}
+      <div
+        style={{
+          position: "sticky",
+          top: 0,
+          zIndex: 20,
+          background: "#fff",
+          paddingTop: 10,
+          boxShadow: "0 2px 6px rgba(0,0,0,0.06)",
+        }}
+      >
+
       {/* 🔍 SEARCH MENU ITEMS */}
       <div style={{ position: "relative", margin: "12px 0 20px" }}>
         <span
@@ -204,6 +217,10 @@ export default function ShopMenuPage() {
 
 
       {/* ✅ NEW: Category Filter */}
+
+      </div>
+      {/* 🧲 END STICKY BAR */}
+
       <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
         {["all", "veg", "nonveg", "drinks"]
         .filter(cat => cat === "all" || availableCategories[cat])
