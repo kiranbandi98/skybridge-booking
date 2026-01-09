@@ -107,6 +107,7 @@ export default function VendorMenuEditor() {
     price: "",
     img: "",
     imgFile: null,
+    category: "veg", // ✅ NEW
   });
 
   useEffect(() => {
@@ -171,11 +172,12 @@ export default function VendorMenuEditor() {
         name: newItem.name,
         price: Number(newItem.price),
         img: imageUrl,
+        category: newItem.category, // ✅ NEW
         inStock: true, // ✅ default
         timestamp: new Date(),
       });
 
-      setNewItem({ name: "", price: "", img: "", imgFile: null });
+      setNewItem({ name: "", price: "", img: "", imgFile: null, category: "veg" });
       alert("Menu item added!");
     } catch (error) {
       console.error("Error adding item:", error);
@@ -301,6 +303,16 @@ export default function VendorMenuEditor() {
           }
           style={inputBox}
         />
+        {/* ✅ NEW: Category Selector */}
+        <select
+          value={newItem.category}
+          onChange={(e) => setNewItem({ ...newItem, category: e.target.value })}
+          style={inputBox}
+        >
+          <option value="veg">Veg</option>
+          <option value="nonveg">Non-Veg</option>
+          <option value="drinks">Drinks</option>
+        </select>
 
         <button onClick={addMenuItem} style={addButton}>
           ➕ Add Item
@@ -357,6 +369,18 @@ export default function VendorMenuEditor() {
                 onChange={(e) => updateMenuItem(item.id, "img", e.target.value)}
                 style={inputSmall}
               />
+              {/* ✅ NEW: Category Editor */}
+              <select
+                value={item.category || "veg"}
+                onChange={(e) =>
+                  updateMenuItem(item.id, "category", e.target.value)
+                }
+                style={inputSmall}
+              >
+                <option value="veg">Veg</option>
+                <option value="nonveg">Non-Veg</option>
+                <option value="drinks">Drinks</option>
+              </select>
 
               {/* ✅ NEW: Replace Image Input (ADDED, OLD CODE NOT REMOVED) */}
               <input

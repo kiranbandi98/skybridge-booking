@@ -9,6 +9,13 @@ export default function ShopMenuPage() {
   const { addToCart, cart } = useCart();
 
   const [menu, setMenu] = useState([]);
+  // ✅ NEW: Detect which categories actually exist
+  const availableCategories = {
+    veg: menu.some(item => (item.category || 'veg') === 'veg'),
+    nonveg: menu.some(item => item.category === 'nonveg'),
+    drinks: menu.some(item => item.category === 'drinks'),
+  };
+
   const [selectedCategory, setSelectedCategory] = useState('all'); // ✅ NEW
   const [shopActive, setShopActive] = useState(true);
   const [addedId, setAddedId] = useState(null);
@@ -89,7 +96,9 @@ export default function ShopMenuPage() {
 
       {/* ✅ NEW: Category Filter */}
       <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
-        {["all", "veg", "nonveg", "drinks"].map((cat) => (
+        {["all", "veg", "nonveg", "drinks"]
+        .filter(cat => cat === "all" || availableCategories[cat])
+        .map((cat) => (
           <button
             key={cat}
             onClick={() => setSelectedCategory(cat)}
