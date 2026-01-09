@@ -56,7 +56,7 @@ export default function ShopMenuPage() {
           price: Number(d.data().price),
         }))
         // ✅ NEW: Hide out-of-stock items (default = in stock)
-        .filter((item) => item.inStock !== false);
+        ;
 
       setMenu(items);
     });
@@ -133,21 +133,48 @@ export default function ShopMenuPage() {
             <h4>{item.name}</h4>
             <p>₹{item.price}</p>
 
+            {item.inStock === false && (
+              <span
+                style={{
+                  background: "#dc3545",
+                  color: "white",
+                  padding: "4px 8px",
+                  borderRadius: 6,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  marginRight: 10,
+                }}
+              >
+                Out of Stock
+              </span>
+            )}
+
             <button
               onClick={() => handleAdd(item)}
-              disabled={!shopActive}
+              disabled={!shopActive || item.inStock === false}
               style={{
                 background:
-                  addedId === item.id ? "#2ecc71" : "#28a745",
+                  item.inStock === false
+                    ? "#6c757d"
+                    : addedId === item.id
+                    ? "#2ecc71"
+                    : "#28a745",
                 color: "white",
                 padding: "8px 14px",
                 borderRadius: 8,
                 border: "none",
-                cursor: shopActive ? "pointer" : "not-allowed",
+                cursor:
+                  !shopActive || item.inStock === false
+                    ? "not-allowed"
+                    : "pointer",
                 fontWeight: 600,
               }}
             >
-              {addedId === item.id ? "Added ✓" : "Add to Cart"}
+              {item.inStock === false
+                ? "Unavailable"
+                : addedId === item.id
+                ? "Added ✓"
+                : "Add to Cart"}
             </button>
           </div>
         </div>
