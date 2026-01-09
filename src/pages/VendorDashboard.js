@@ -3,7 +3,9 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { db } from "../utils/firebase";
-import { collection, onSnapshot, doc, getDoc } from "firebase/firestore";
+import { collection, onSnapshot, doc, getDoc, updateDoc } from "firebase/firestore";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import imageCompression from "browser-image-compression"; // ✅ NEW: banner compression
 
 // ⭐ Added for Logout
 import { getAuth, signOut } from "firebase/auth";
@@ -62,6 +64,9 @@ export default function VendorDashboard() {
   );
   const { shopId } = useParams();
   const [orders, setOrders] = useState([]);
+  const [shopBanner, setShopBanner] = useState("");
+  const [bannerUploading, setBannerUploading] = useState(false);
+
   const [newOrdersCount, setNewOrdersCount] = useState(0);
 
   const initialLoaded = useRef(false);
@@ -76,6 +81,10 @@ export default function VendorDashboard() {
       try {
         const ref = doc(db, "shops", shopId);
         const snap = await getDoc(ref);
+        if (snap.data().bannerImage) {
+          setShopBanner(snap.data().bannerImage);
+        }
+
 
         if (!snap.exists()) {
           alert("Shop not found");
@@ -97,8 +106,52 @@ export default function VendorDashboard() {
   }, [shopId, navigate]);
   /* ===================================================== */
 
-
   // ⭐ Logout function
+  /* --------------------------------------------------
+     ✅ NEW: Shop Banner Image Compression Helper
+  -------------------------------------------------- */
+  async function compressBanner(file) {
+    const options = {
+      maxSizeMB: 0.4,
+      maxWidthOrHeight: 1600,
+      useWebWorker: true,
+    };
+    try {
+      return await imageCompression(file, options);
+    } catch (e) {
+      console.error("Banner compression failed:", e);
+      return file; // safe fallback
+    }
+  }
+
+
+  
+  /* --------------------------------------------------
+     ✅ NEW: Upload / Replace Shop Banner
+  -------------------------------------------------- */
+  async function handleBannerUpload(file) {
+    if (!file) return;
+    try {
+      setBannerUploading(true);
+      const storage = getStorage();
+      const compressed = await compressBanner(file);
+      const bannerRef = ref(storage, `shopBanners/${shopId}/banner.jpg`);
+      await uploadBytes(bannerRef, compressed);
+      const url = await getDownloadURL(bannerRef);
+
+      await updateDoc(doc(db, "shops", shopId), {
+        bannerImage: url,
+      });
+
+      setShopBanner(url);
+    } catch (e) {
+      console.error("Banner upload failed:", e);
+      alert("Banner upload failed");
+    } finally {
+      setBannerUploading(false);
+    }
+  }
+
   function handleLogout() {
     const auth = getAuth();
     signOut(auth)
@@ -290,6 +343,50 @@ export default function VendorDashboard() {
 
       {/* ⭐ INSERTED NAVBAR HERE (Option 1 placement) */}
       <Navbar />
+      {/* -------------------------------------------------- */}
+      {/* ✅ NEW: Shop Banner Upload (SAFE ADDITION) */}
+      {/* -------------------------------------------------- */}
+      <div
+        style={{
+          marginBottom: 24,
+          padding: 16,
+          background: "#fff",
+          borderRadius: 10,
+          boxShadow: "0 4px 14px rgba(0,0,0,0.06)",
+        }}
+      >
+        <div style={{ fontWeight: 700, marginBottom: 10 }}>
+          Shop Banner / Logo
+        </div>
+
+        {shopBanner && (
+          <img
+            src={shopBanner}
+            alt="Shop Banner"
+            style={{
+              width: "100%",
+              maxHeight: 220,
+              objectFit: "cover",
+              borderRadius: 8,
+              marginBottom: 10,
+            }}
+          />
+        )}
+
+        <input
+          type="file"
+          accept="image/*"
+          onChange={(e) => handleBannerUpload(e.target.files[0])}
+          disabled={bannerUploading}
+        />
+
+        {bannerUploading && (
+          <div style={{ marginTop: 8, color: "#666" }}>
+            Uploading banner...
+          </div>
+        )}
+      </div>
+
 
       {/* Your original header (unchanged) */}
       <header
