@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import { db } from "../utils/firebase";
 import { collection, onSnapshot, doc, getDoc } from "firebase/firestore";
@@ -20,6 +20,14 @@ export default function ShopMenuPage() {
   const [shopActive, setShopActive] = useState(true);
   const [addedId, setAddedId] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // ✅ NEW: Category section refs (auto-scroll)
+  const categoryRefs = {
+    veg: useRef(null),
+    nonveg: useRef(null),
+    drinks: useRef(null),
+  };
+
 
   /* =====================================================
      🚫 SHOP ACTIVE CHECK (ADMIN CONTROL)
@@ -82,6 +90,22 @@ export default function ShopMenuPage() {
     acc[cat].push(item);
     return acc;
   }, {});
+
+  
+  /* =====================================================
+     🎯 AUTO-SCROLL TO FIRST AVAILABLE CATEGORY
+  ===================================================== */
+  useEffect(() => {
+    if (!menu.length || selectedCategory !== "all") return;
+
+    const first = ["veg", "nonveg", "drinks"].find(
+      (c) => groupedMenu[c] && groupedMenu[c].length > 0
+    );
+
+    if (first && categoryRefs[first]?.current) {
+      categoryRefs[first].current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [menu, groupedMenu, selectedCategory]);
 
   // ⏳ Wait for Firestore
   if (loading) {
@@ -168,7 +192,7 @@ export default function ShopMenuPage() {
       {menu.length === 0 && <p>No menu items added yet.</p>}
 
       {Object.entries(groupedMenu).map(([category, items]) => (
-        <div key={category}>
+        <div key={category} ref={categoryRefs[category]}>
           <h3 style={{ marginTop: 20, textTransform: "capitalize" }}>
             {category === "veg"
               ? "🥦 Veg"
