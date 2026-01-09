@@ -117,6 +117,21 @@ export default function ShopMenuPage() {
     }
   }, [menu, groupedMenu, selectedCategory]);
 
+
+  // 🔍 NEW: Highlight matched search text
+  function highlightText(text, query) {
+    if (!query) return text;
+
+    const parts = text.split(new RegExp(`(${query})`, "gi"));
+    return parts.map((part, i) =>
+      part.toLowerCase() === query.toLowerCase() ? (
+        <strong key={i}>{part}</strong>
+      ) : (
+        part
+      )
+    );
+  }
+
   // ⏳ Wait for Firestore
   if (loading) {
     return <p style={{ padding: 20 }}>Loading shop…</p>;
@@ -264,7 +279,7 @@ export default function ShopMenuPage() {
           />
 
           <div style={{ flex: 1 }}>
-            <h4>{item.name}</h4>
+            <h4>{highlightText(item.name, searchQuery)}</h4>
             <p>₹{item.price}</p>
 
             {item.inStock === false && (
