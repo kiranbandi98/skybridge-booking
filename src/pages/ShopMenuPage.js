@@ -23,11 +23,22 @@ export default function ShopMenuPage() {
   const [searchQuery, setSearchQuery] = useState("");
 
   // ✅ NEW: Category section refs (auto-scroll)
+  
+  
+
   const categoryRefs = {
     veg: useRef(null),
     nonveg: useRef(null),
     drinks: useRef(null),
   };
+
+const scrollToCategory = (cat) => {
+    const ref = categoryRefs[cat];
+    if (ref?.current) {
+      ref.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
 
 
   /* =====================================================
@@ -75,7 +86,13 @@ export default function ShopMenuPage() {
       setMenu(items);
     });
 
-    return () => unsubscribe();
+    function handleAdd(item) {
+    addToCart(item);
+    setAddedId(item.id);
+    setTimeout(() => setAddedId(null), 800);
+  }
+
+return () => unsubscribe();
   }, [shopId]);
 
     // ✅ NEW: Category + Search filter logic
@@ -227,7 +244,10 @@ export default function ShopMenuPage() {
         .map((cat) => (
           <button
             key={cat}
-            onClick={() => setSelectedCategory(cat)}
+            onClick={() => {
+              setSelectedCategory(cat);
+              if (cat !== "all") scrollToCategory(cat);
+            }}
             style={{
               padding: "6px 14px",
               borderRadius: 20,
@@ -384,9 +404,4 @@ export default function ShopMenuPage() {
     </div>
   );
 
-  function handleAdd(item) {
-    addToCart(item);
-    setAddedId(item.id);
-    setTimeout(() => setAddedId(null), 800);
   }
-}
