@@ -9,9 +9,10 @@ export default function ShopMenuPage() {
   const { addToCart, cart } = useCart();
 
   const [menu, setMenu] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState('all'); // ✅ NEW
   const [shopActive, setShopActive] = useState(true);
   const [addedId, setAddedId] = useState(null);
-  const [loading, setLoading] = useState(true); // ✅ FIX 1
+  const [loading, setLoading] = useState(true);
 
   /* =====================================================
      🚫 SHOP ACTIVE CHECK (ADMIN CONTROL)
@@ -33,7 +34,7 @@ export default function ShopMenuPage() {
         console.error("Shop active check failed:", e);
         setShopActive(false);
       } finally {
-        setLoading(false); // ✅ FIX 2
+        setLoading(false);
       }
     };
 
@@ -49,14 +50,11 @@ export default function ShopMenuPage() {
     const colRef = collection(db, "shops", shopId, "menu");
 
     const unsubscribe = onSnapshot(colRef, (snap) => {
-      const items = snap.docs
-        .map((d) => ({
-          id: d.id,
-          ...d.data(),
-          price: Number(d.data().price),
-        }))
-        // ✅ NEW: Hide out-of-stock items (default = in stock)
-        ;
+      const items = snap.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+        price: Number(d.data().price),
+      }));
 
       setMenu(items);
     });
@@ -64,10 +62,18 @@ export default function ShopMenuPage() {
     return () => unsubscribe();
   }, [shopId]);
 
-  // ✅ FIX 3 — WAIT FOR FIRESTORE (CRITICAL FOR MOBILE)
+    // ✅ NEW: Category filter logic
+  const filteredMenu = selectedCategory === 'all'
+    ? menu
+    : menu.filter(item => (item.category || 'veg') === selectedCategory);
+
+  // ⏳ Wait for Firestore
   if (loading) {
     return <p style={{ padding: 20 }}>Loading shop…</p>;
   }
+
+  // ✅ NEW: CHECK IF ANY ITEM IS IN STOCK
+  const hasAnyInStock = menu.some((item) => item.inStock !== false);
 
   return (
     <div style={{ padding: 20, maxWidth: 900, margin: "0 auto" }}>
@@ -81,30 +87,69 @@ export default function ShopMenuPage() {
 
       <p>Select your items</p>
 
+      {/* ✅ NEW: Category Filter */}
+      <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
+        {["all", "veg", "nonveg", "drinks"].map((cat) => (
+          <button
+            key={cat}
+            onClick={() => setSelectedCategory(cat)}
+            style={{
+              padding: "6px 14px",
+              borderRadius: 20,
+              border: "1px solid #ccc",
+              background:
+                selectedCategory === cat ? "#0d6efd" : "#f8f9fa",
+              color:
+                selectedCategory === cat ? "white" : "#333",
+              cursor: "pointer",
+              fontWeight: 600,
+            }}
+          >
+            {cat === "all"
+              ? "All"
+              : cat === "veg"
+              ? "Veg"
+              : cat === "nonveg"
+              ? "Non-Veg"
+              : "Drinks"}
+          </button>
+        ))}
+      </div>
+
+
       <div style={{ marginBottom: 20 }}>
         <Link to={`/cart/${shopId}`}>
           <button
-            disabled={!shopActive}
+            disabled={!shopActive || !hasAnyInStock}
             style={{
               background: "#0d6efd",
               color: "white",
               padding: "10px 16px",
               borderRadius: 8,
               border: "none",
-              cursor: shopActive ? "pointer" : "not-allowed",
+              cursor:
+                shopActive && hasAnyInStock ? "pointer" : "not-allowed",
               fontWeight: 600,
             }}
           >
-            {shopActive
-              ? `🛒 View Cart (${cart.length})`
-              : "Shop Unavailable"}
+            {!shopActive
+              ? "Shop Unavailable"
+              : !hasAnyInStock
+              ? "All Items Out of Stock"
+              : `🛒 View Cart (${cart.length})`}
           </button>
         </Link>
+
+        {!hasAnyInStock && (
+          <p style={{ color: "#dc3545", marginTop: 10, fontWeight: 600 }}>
+            All items are currently out of stock
+          </p>
+        )}
       </div>
 
       {menu.length === 0 && <p>No menu items added yet.</p>}
 
-      {menu.map((item) => (
+      {filteredMenu.map((item) => (
         <div
           key={item.id}
           style={{
