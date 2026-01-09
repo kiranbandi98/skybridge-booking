@@ -190,6 +190,20 @@ export default function VendorMenuEditor() {
     } catch (error) {
       console.error("Update error:", error);
     }
+
+  /* --------------------------------------------------
+     ✅ NEW: Toggle In-Stock / Out-of-Stock (DEFINED)
+  -------------------------------------------------- */
+  async function toggleInStock(itemId, current) {
+    try {
+      await updateDoc(doc(db, `shops/${shopId}/menu`, itemId), {
+        inStock: !current,
+      });
+    } catch (error) {
+      console.error("Toggle inStock error:", error);
+    }
+  }
+
   }
 
   async function replaceMenuImage(itemId, file) {
