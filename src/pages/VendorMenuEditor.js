@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import imageCompression from "browser-image-compression"; // ✅ NEW: image compression
 
 import {
   collection,
@@ -125,6 +126,27 @@ export default function VendorMenuEditor() {
     return () => unsubscribe();
   }, [shopId]);
 
+
+  /* --------------------------------------------------
+     ✅ NEW: Image Compression Helper (SAFE ADDITION)
+     Compresses images before upload to Storage
+  -------------------------------------------------- */
+  async function compressImage(file) {
+    const options = {
+      maxSizeMB: 0.3,
+      maxWidthOrHeight: 1024,
+      useWebWorker: true,
+    };
+
+    try {
+      const compressedFile = await imageCompression(file, options);
+      return compressedFile;
+    } catch (error) {
+      console.error("Image compression failed:", error);
+      return file; // fallback to original (safe)
+    }
+  }
+
   async function addMenuItem() {
     const storage = getStorage();
     if (!newItem.name || !newItem.price) {
@@ -136,11 +158,12 @@ export default function VendorMenuEditor() {
       let imageUrl = "";
 
       if (newItem.imgFile) {
+        const compressed = await compressImage(newItem.imgFile); // ✅ NEW
         const imageRef = ref(
           storage,
-          `menuImages/${shopId}/${Date.now()}_${newItem.imgFile.name}`
+          `menuImages/${shopId}/${Date.now()}_${compressed.name}`
         );
-        await uploadBytes(imageRef, newItem.imgFile);
+        await uploadBytes(imageRef, compressed);
         imageUrl = await getDownloadURL(imageRef);
       }
 
@@ -174,11 +197,12 @@ export default function VendorMenuEditor() {
 
     try {
       const storage = getStorage();
+      const compressed = await compressImage(file); // ✅ NEW
       const imageRef = ref(
         storage,
-        `menuImages/${shopId}/${Date.now()}_${file.name}`
+        `menuImages/${shopId}/${Date.now()}_${compressed.name}`
       );
-      await uploadBytes(imageRef, file);
+      await uploadBytes(imageRef, compressed);
       const newUrl = await getDownloadURL(imageRef);
 
       await updateDoc(doc(db, `shops/${shopId}/menu`, itemId), {
