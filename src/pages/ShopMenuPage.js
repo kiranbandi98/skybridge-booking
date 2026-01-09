@@ -74,6 +74,15 @@ export default function ShopMenuPage() {
     ? menu
     : menu.filter(item => (item.category || 'veg') === selectedCategory);
 
+  
+  // ✅ NEW: Group menu items by category (customer view)
+  const groupedMenu = filteredMenu.reduce((acc, item) => {
+    const cat = item.category || "veg";
+    if (!acc[cat]) acc[cat] = [];
+    acc[cat].push(item);
+    return acc;
+  }, {});
+
   // ⏳ Wait for Firestore
   if (loading) {
     return <p style={{ padding: 20 }}>Loading shop…</p>;
@@ -158,7 +167,20 @@ export default function ShopMenuPage() {
 
       {menu.length === 0 && <p>No menu items added yet.</p>}
 
-      {filteredMenu.map((item) => (
+      {Object.entries(groupedMenu).map(([category, items]) => (
+        <div key={category}>
+          <h3 style={{ marginTop: 20, textTransform: "capitalize" }}>
+            {category === "veg"
+              ? "🥦 Veg"
+              : category === "nonveg"
+              ? "🍗 Non-Veg"
+              : category === "drinks"
+              ? "🥤 Drinks"
+              : category}
+          </h3>
+
+          {items.map((item) => (
+
         <div
           key={item.id}
           style={{
@@ -231,6 +253,8 @@ export default function ShopMenuPage() {
                 : "Add to Cart"}
             </button>
           </div>
+        </div>
+          ))}
         </div>
       ))}
     </div>
