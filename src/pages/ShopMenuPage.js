@@ -20,6 +20,7 @@ export default function ShopMenuPage() {
   const [shopActive, setShopActive] = useState(true);
   const [addedId, setAddedId] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // ✅ NEW: Category section refs (auto-scroll)
   const categoryRefs = {
@@ -77,10 +78,19 @@ export default function ShopMenuPage() {
     return () => unsubscribe();
   }, [shopId]);
 
-    // ✅ NEW: Category filter logic
-  const filteredMenu = selectedCategory === 'all'
-    ? menu
-    : menu.filter(item => (item.category || 'veg') === selectedCategory);
+    // ✅ NEW: Category + Search filter logic
+  const filteredMenu = menu.filter((item) => {
+    const categoryMatch =
+      selectedCategory === "all" ||
+      (item.category || "veg") === selectedCategory;
+
+    const searchMatch =
+      searchQuery.trim() === "" ||
+      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (item.category || "veg").toLowerCase().includes(searchQuery.toLowerCase());
+
+    return categoryMatch && searchMatch;
+  });
 
   
   // ✅ NEW: Group menu items by category (customer view)
@@ -126,6 +136,23 @@ export default function ShopMenuPage() {
       )}
 
       <p>Select your items</p>
+
+      {/* 🔍 SEARCH MENU ITEMS */}
+      <input
+        type="text"
+        placeholder="Search menu items..."
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        style={{
+          width: "100%",
+          padding: "10px 14px",
+          margin: "12px 0 20px",
+          borderRadius: 8,
+          border: "1px solid #ccc",
+          fontSize: 14,
+        }}
+      />
+
 
       {/* ✅ NEW: Category Filter */}
       <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
@@ -190,6 +217,13 @@ export default function ShopMenuPage() {
       </div>
 
       {menu.length === 0 && <p>No menu items added yet.</p>}
+
+      {menu.length > 0 && filteredMenu.length === 0 && (
+        <p style={{ marginTop: 20, fontWeight: 600 }}>
+          🔍 No items found
+        </p>
+      )}
+
 
       {Object.entries(groupedMenu).map(([category, items]) => (
         <div key={category} ref={categoryRefs[category]}>
