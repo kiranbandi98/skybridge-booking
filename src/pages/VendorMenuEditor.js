@@ -193,9 +193,7 @@ export default function VendorMenuEditor() {
     } catch (error) {
       console.error("Update error:", error);
     }
-
-
-    }
+  }
 
 
   /* --------------------------------------------------
