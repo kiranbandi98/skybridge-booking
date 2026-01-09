@@ -4,6 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 
 export default function CartPage() {
   const { cart, updateQty, removeItem, cartTotal } = useCart();
+  const hasOutOfStockInCart = cart.some(item => item.inStock === false);
   const navigate = useNavigate();
   const { shopId } = useParams(); // ✅ REQUIRED
 
@@ -83,22 +84,33 @@ export default function CartPage() {
       <h3>Total: ₹{cartTotal}</h3>
 
       {cart.length > 0 && (
-        <button
-          onClick={() => navigate(`/checkout/${shopId}`)} // ✅ FIXED
-          style={{
-            background: "#0366d6",
-            color: "white",
-            padding: "12px 20px",
-            borderRadius: 8,
-            border: "none",
-            cursor: "pointer",
-            width: "100%",
-            fontSize: 18,
-            marginTop: 10,
-          }}
-        >
-          Proceed to Checkout →
-        </button>
+        <>
+          <button
+            onClick={() => navigate(`/checkout/${shopId}`)} // ✅ FIXED
+            disabled={hasOutOfStockInCart}
+            style={{
+              background: hasOutOfStockInCart ? "#6c757d" : "#0366d6",
+              color: "white",
+              padding: "12px 20px",
+              borderRadius: 8,
+              border: "none",
+              cursor: hasOutOfStockInCart ? "not-allowed" : "pointer",
+              width: "100%",
+              fontSize: 18,
+              marginTop: 10,
+            }}
+          >
+            {hasOutOfStockInCart
+              ? "Some items are unavailable"
+              : "Proceed to Checkout →"}
+          </button>
+
+          {hasOutOfStockInCart && (
+            <p style={{ color: "#dc3545", marginTop: 10, fontWeight: 600 }}>
+              Some items in your cart are no longer available. Please remove them to continue.
+            </p>
+          )}
+        </>
       )}
     </div>
   );
