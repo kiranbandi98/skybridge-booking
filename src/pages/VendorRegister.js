@@ -1,4 +1,3 @@
-// src/pages/VendorRegister.js
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -31,7 +30,7 @@ export default function VendorRegister() {
     setLoading(true);
 
     try {
-      // ✅ Create vendor with email + password (no random password)
+      // ✅ Create vendor with email + password
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         form.email,
@@ -40,7 +39,7 @@ export default function VendorRegister() {
 
       const user = userCredential.user;
 
-      // 🔥 Create shop document
+      // 🔥 Create shop / vendor document with SAFE payout defaults
       await setDoc(doc(db, "shops", user.uid), {
         ownerUid: user.uid,
         shopName: form.shopName,
@@ -48,6 +47,16 @@ export default function VendorRegister() {
         phone: form.phone,
         email: form.email,
         createdAt: new Date(),
+
+        /* ===============================
+           INSTANT_DINEIN – PAYOUT DEFAULTS
+           (SAFE, NO BEHAVIOR CHANGE)
+        =============================== */
+        kycStatus: "NOT_STARTED",
+        bankStatus: "NOT_ADDED",
+        upiStatus: "NOT_ADDED",
+        payoutEligible: false,
+        payoutMode: "HOLD",
       });
 
       // 📧 Send email verification
