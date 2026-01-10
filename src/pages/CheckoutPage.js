@@ -1,4 +1,3 @@
-// src/pages/CheckoutPage.js
 import React, { useState, useEffect } from "react";
 import { useCart } from "../context/CartContext";
 import { useNavigate, useParams } from "react-router-dom";
@@ -79,7 +78,6 @@ export default function CheckoutPage() {
 
       const data = await res.json();
 
-      // ✅ FIX: backend sends order_id, not orderId
       const razorpayOrderId = data.orderId || data.order_id;
 
       if (!data.success || !razorpayOrderId) {
@@ -113,7 +111,19 @@ export default function CheckoutPage() {
               table: form.table,
               items: cart,
               totalAmount: cartTotal,
-              paymentStatus: "Paid",
+
+              /* ===============================
+                 PAYMENT & PAYOUT DEFAULTS
+                 (PHASE 1.2 – SAFE)
+              =============================== */
+              paymentStatus: "PAID",
+
+              payoutStatus: "NOT_TRIGGERED",
+              payoutReferenceKey: "PENDING", // finalized later
+              payoutId: null,
+              payoutAttemptedAt: null,
+              payoutCompletedAt: null,
+
               razorpayPaymentId: response.razorpay_payment_id,
               razorpayOrderId: response.razorpay_order_id,
             });
@@ -259,5 +269,3 @@ const input = {
   border: "1px solid #ccc",
   marginBottom: 12,
 };
-
-// ✅ Updated & verified: Razorpay create-order API working
