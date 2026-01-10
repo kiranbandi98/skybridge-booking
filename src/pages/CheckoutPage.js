@@ -2,8 +2,10 @@ import React, { useState, useEffect } from "react";
 import { useCart } from "../context/CartContext";
 import { useNavigate, useParams } from "react-router-dom";
 import { saveOrderToFirestore } from "../utils/saveOrder";
+import { getFirestore, doc, getDoc } from "firebase/firestore";
 
 export default function CheckoutPage() {
+  const db = getFirestore();
   const { cart, cartTotal, clearCart } = useCart();
   const navigate = useNavigate();
   const { shopId } = useParams();
@@ -102,6 +104,14 @@ export default function CheckoutPage() {
           try {
             console.log("✅ Razorpay response received", response);
 
+                        // 🔒 HOLD MODE ENFORCEMENT (STEP 4.2 – SAFE)
+            const shopSnap = await getDoc(doc(db, "shops", shopId));
+            const shopData = shopSnap.exists() ? shopSnap.data() : {};
+
+            const shouldHoldPayout =
+              shopData.payoutMode !== "INSTANT" ||
+              shopData.acceptedInstantPayout !== true;
+
             const orderId = await saveOrderToFirestore(shopId, {
               customerName: form.name,
               phone: form.phone,
@@ -118,7 +128,7 @@ export default function CheckoutPage() {
               =============================== */
               paymentStatus: "PAID",
 
-              payoutStatus: "NOT_TRIGGERED",
+              payoutStatus: shouldHoldPayout ? "HOLD" : "NOT_TRIGGERED",
               payoutReferenceKey: "PENDING", // finalized later
               payoutId: null,
               payoutAttemptedAt: null,
