@@ -86,12 +86,6 @@ const scrollToCategory = (cat) => {
       setMenu(items);
     });
 
-    function handleAdd(item) {
-    addToCart(item);
-    setAddedId(item.id);
-    setTimeout(() => setAddedId(null), 800);
-  }
-
 return () => unsubscribe();
   }, [shopId]);
 
@@ -149,7 +143,15 @@ return () => unsubscribe();
     );
   }
 
-  // ⏳ Wait for Firestore
+  
+  // ✅ ADD TO CART HANDLER (FIXED SCOPE)
+  function handleAdd(item) {
+    addToCart(item);
+    setAddedId(item.id);
+    setTimeout(() => setAddedId(null), 800);
+  }
+
+// ⏳ Wait for Firestore
   if (loading) {
     return <p style={{ padding: 20 }}>Loading shop…</p>;
   }
@@ -403,5 +405,4 @@ return () => unsubscribe();
       ))}
     </div>
   );
-
-  }
+}
