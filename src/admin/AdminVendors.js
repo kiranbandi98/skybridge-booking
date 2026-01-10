@@ -47,6 +47,25 @@ export default function AdminVendors() {
     }
   };
 
+  // 🔒 ADMIN CONTROL: HOLD ↔ INSTANT (DATA ONLY)
+  const togglePayoutMode = async (shopId, currentMode) => {
+    const nextMode = currentMode === "INSTANT" ? "HOLD" : "INSTANT";
+
+    try {
+      await updateDoc(doc(db, "shops", shopId), {
+        payoutMode: nextMode,
+      });
+
+      setShops((prev) =>
+        prev.map((s) =>
+          s.id === shopId ? { ...s, payoutMode: nextMode } : s
+        )
+      );
+    } catch (err) {
+      console.error("Failed to update payout mode:", err);
+    }
+  };
+
   if (loading) {
     return <p>Loading vendors...</p>;
   }
@@ -62,7 +81,9 @@ export default function AdminVendors() {
           <tr>
             <th>Shop Name</th>
             <th>Status</th>
-            <th>Action</th>
+            <th>Payout Mode</th>
+            <th>Vendor Consent</th>
+            <th>Actions</th>
           </tr>
         </thead>
 
@@ -70,12 +91,36 @@ export default function AdminVendors() {
           {shops.map((shop) => (
             <tr key={shop.id}>
               <td>{shop.shopName || "Unnamed Shop"}</td>
+
               <td>{shop.active ? "Active" : "Disabled"}</td>
+
+              <td>{shop.payoutMode || "HOLD"}</td>
+
               <td>
+                {shop.acceptedInstantPayout ? "Accepted" : "Not Accepted"}
+              </td>
+
+              <td>
+                {/* Enable / Disable Shop */}
                 <button
                   onClick={() => toggleActive(shop.id, shop.active)}
+                  style={{ marginRight: 8 }}
                 >
-                  {shop.active ? "Disable" : "Enable"}
+                  {shop.active ? "Disable Shop" : "Enable Shop"}
+                </button>
+
+                {/* Admin Payout Mode Toggle */}
+                <button
+                  onClick={() =>
+                    togglePayoutMode(
+                      shop.id,
+                      shop.payoutMode || "HOLD"
+                    )
+                  }
+                >
+                  {shop.payoutMode === "INSTANT"
+                    ? "Force HOLD"
+                    : "Enable INSTANT"}
                 </button>
               </td>
             </tr>
