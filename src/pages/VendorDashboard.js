@@ -65,6 +65,7 @@ export default function VendorDashboard() {
   const { shopId } = useParams();
   const [orders, setOrders] = useState([]);
   const [shopBanner, setShopBanner] = useState("");
+  const [shop, setShop] = useState(null);
   const [bannerUploading, setBannerUploading] = useState(false);
 
   const [newOrdersCount, setNewOrdersCount] = useState(0);
@@ -81,6 +82,7 @@ export default function VendorDashboard() {
       try {
         const ref = doc(db, "shops", shopId);
         const snap = await getDoc(ref);
+        setShop(snap.data());
         if (snap.data().bannerImage) {
           setShopBanner(snap.data().bannerImage);
         }
@@ -385,7 +387,69 @@ export default function VendorDashboard() {
             Uploading banner...
           </div>
         )}
+      
+      {/* ⚡ INSTANT PAYOUT CONSENT (SAFE, DATA ONLY) */}
+      <div
+        style={{
+          marginBottom: 24,
+          padding: 16,
+          background: "#fff",
+          borderRadius: 10,
+          boxShadow: "0 4px 14px rgba(0,0,0,0.06)",
+          border:
+            shop?.payoutMode === "INSTANT"
+              ? "2px solid #2e7d32"
+              : "2px dashed #ccc",
+        }}
+      >
+        <div style={{ fontWeight: 700, marginBottom: 8 }}>
+          ⚡ Instant Payouts (Dine-in & Pickup)
+        </div>
+
+        {shop?.payoutMode !== "INSTANT" && (
+          <div style={{ color: "#b71c1c", marginBottom: 10 }}>
+            Instant payouts are currently disabled by admin.
+          </div>
+        )}
+
+        {shop?.payoutMode === "INSTANT" && (
+          <>
+            <p style={{ color: "#555", marginBottom: 10 }}>
+              Enable instant payouts to receive money immediately for
+              <strong> dine-in </strong> and <strong> pickup </strong> orders.
+              <br />
+              <strong>Instant payouts are final and non-refundable.</strong>
+            </p>
+
+            <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <input
+                type="checkbox"
+                checked={shop?.acceptedInstantPayout === true}
+                onChange={async (e) => {
+                  try {
+                    await updateDoc(doc(db, "shops", shopId), {
+                      acceptedInstantPayout: e.target.checked,
+                    });
+                  } catch (err) {
+                    alert("Failed to update payout consent");
+                    console.error(err);
+                  }
+                }}
+              />
+              I understand and agree to instant payout rules
+            </label>
+
+            {shop?.acceptedInstantPayout && (
+              <div style={{ marginTop: 8, color: "#2e7d32", fontWeight: 600 }}>
+                ✅ Instant payouts enabled
+              </div>
+            )}
+          </>
+        )}
       </div>
+
+
+</div>
 
 
       {/* Your original header (unchanged) */}
