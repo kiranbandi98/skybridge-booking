@@ -1,5 +1,6 @@
 const { setGlobalOptions } = require("firebase-functions");
 const { onDocumentCreated, onDocumentUpdated } = require("firebase-functions/v2/firestore");
+const { onRequest } = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
 
 admin.initializeApp();
@@ -195,3 +196,77 @@ exports.notifyVendorOnPaymentPaid = onDocumentUpdated(
     }
   }
 );
+
+
+
+/* =========================================================
+   💳 RAZORPAY CALLBACK (LIVE MODE)
+   ========================================================= */
+
+const crypto = require("crypto");
+
+exports.razorpayCallback = onRequest(async (req, res) => {
+  try {
+    const {
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
+    } = req.body;
+
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+      console.error("❌ Missing Razorpay callback fields");
+      return res.status(400).send("Invalid callback payload");
+    }
+
+    const secret = process.env.RAZORPAY_KEY_SECRET;
+
+    const body = razorpay_order_id + "|" + razorpay_payment_id;
+
+    const expectedSignature = crypto
+      .createHmac("sha256", secret)
+      .update(body)
+      .digest("hex");
+
+    if (expectedSignature !== razorpay_signature) {
+      console.error("❌ Razorpay signature mismatch");
+      return res.status(400).send("Signature verification failed");
+    }
+
+    // Find order by razorpay_order_id
+    const orderSnap = await db
+      .collectionGroup("orders")
+      .where("razorpayOrderId", "==", razorpay_order_id)
+      .limit(1)
+      .get();
+
+    if (orderSnap.empty) {
+      console.error("❌ Order not found for Razorpay order ID");
+      return res.status(404).send("Order not found");
+    }
+
+    const orderDoc = orderSnap.docs[0];
+    const orderRef = orderDoc.ref;
+
+    await orderRef.set(
+      {
+        paymentStatus: "Paid",
+        razorpayPaymentId: razorpay_payment_id,
+        paidAt: admin.firestore.FieldValue.serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    const { shopId, orderId } = orderRef.path.match(/shops\/(.*?)\/orders\/(.*)/).groups || {};
+
+    console.log("✅ Payment verified & order marked Paid:", razorpay_order_id);
+
+    // Redirect user to success page
+    return res.redirect(
+      `https://skybridge-booking.onrender.com/#/order-success/${shopId}/${orderRef.id}`
+    );
+  } catch (error) {
+    console.error("❌ Razorpay callback error:", error);
+    return res.status(500).send("Server error");
+  }
+
+});

@@ -91,62 +91,20 @@ export default function CheckoutPage() {
       console.log("✅ Razorpay order created:", razorpayOrderId);
 
       // 2️⃣ Open Razorpay Checkout
+      const safeContact = String(form.phone || "")
+        .replace(/\D/g, "")
+        .slice(-10);
+
       const options = {
         key: process.env.REACT_APP_RAZORPAY_KEY_ID,
-        amount: amountInPaise,
-        currency: "INR",
-        name: "SkyBridge",
+name: "SkyBridge",
         description: "Food Order Payment",
         image: "https://skybridge-booking.onrender.com/logo192.png",
         order_id: razorpayOrderId,
 
-        handler: async function (response) {
-          try {
-            console.log("✅ Razorpay response received", response);
-
-                        // 🔒 HOLD MODE ENFORCEMENT (STEP 4.2 – SAFE)
-            const shopSnap = await getDoc(doc(db, "shops", shopId));
-            const shopData = shopSnap.exists() ? shopSnap.data() : {};
-
-            const shouldHoldPayout =
-              shopData.payoutMode !== "INSTANT" ||
-              shopData.acceptedInstantPayout !== true;
-
-            const orderId = await saveOrderToFirestore(shopId, {
-              customerName: form.name,
-              phone: form.phone,
-              email: "customer@skybridge.app",
-              orderType: form.orderType,
-              address: form.address,
-              table: form.table,
-              items: cart,
-              totalAmount: cartTotal,
-
-              /* ===============================
-                 PAYMENT & PAYOUT DEFAULTS
-                 (PHASE 1.2 – SAFE)
-              =============================== */
-              paymentStatus: "PAID",
-
-              payoutStatus: shouldHoldPayout ? "HOLD" : "NOT_TRIGGERED",
-              payoutReferenceKey: "PENDING", // finalized later
-              payoutId: null,
-              payoutAttemptedAt: null,
-              payoutCompletedAt: null,
-
-              razorpayPaymentId: response.razorpay_payment_id,
-              razorpayOrderId: response.razorpay_order_id,
-            });
-
-            clearCart();
-            navigate(`/order-success/${shopId}/${orderId}`);
-          } catch (err) {
-            console.error("❌ Order save failed:", err);
-            alert("Order failed. Please try again.");
-          }
-        },
-
-        modal: {
+        // 🔴 REQUIRED FOR LIVE MODE
+        callback_url: `${process.env.REACT_APP_BACKEND_URL}/razorpay-callback`,
+modal: {
           ondismiss: function () {
             console.warn("⚠️ Razorpay popup closed by user");
           },
@@ -154,7 +112,7 @@ export default function CheckoutPage() {
 
         prefill: {
           name: form.name,
-          contact: form.phone,
+          contact: safeContact,
         },
 
         theme: {
