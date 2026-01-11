@@ -1,5 +1,5 @@
 const { setGlobalOptions } = require("firebase-functions");
-const { onDocumentCreated } = require("firebase-functions/v2/firestore");
+const { onDocumentCreated, onDocumentUpdated } = require("firebase-functions/v2/firestore");
 const admin = require("firebase-admin");
 
 admin.initializeApp();
@@ -9,6 +9,10 @@ const messaging = admin.messaging();
 
 // Safety
 setGlobalOptions({ maxInstances: 10 });
+
+/* =========================================================
+   🛒 NEW ORDER CREATED → UPDATE REVENUE + NOTIFY VENDOR
+   ========================================================= */
 
 exports.notifyVendorOnNewOrder = onDocumentCreated(
   "shops/{shopId}/orders/{orderId}",
@@ -25,15 +29,12 @@ exports.notifyVendorOnNewOrder = onDocumentCreated(
 
       let amount = 0;
 
-      // Case 1: totalAmount exists
       if (orderData.totalAmount) {
         amount = Number(orderData.totalAmount);
-      }
-
-      // Case 2: calculate from items
-      else if (Array.isArray(orderData.items)) {
+      } else if (Array.isArray(orderData.items)) {
         amount = orderData.items.reduce(
-          (sum, item) => sum + Number(item.price || 0) * Number(item.qty || 1),
+          (sum, item) =>
+            sum + Number(item.price || 0) * Number(item.qty || 1),
           0
         );
       }
@@ -52,7 +53,6 @@ exports.notifyVendorOnNewOrder = onDocumentCreated(
           },
           { merge: true }
         );
-
         console.log("✅ Revenue updated:", amount);
       } else {
         console.log("⚠️ Revenue NOT updated (unpaid or zero amount)");
@@ -74,8 +74,6 @@ exports.notifyVendorOnNewOrder = onDocumentCreated(
       }
 
       const tokens = devicesSnap.docs.map((d) => d.id);
-
-      console.log("📲 Sending notification to tokens:", tokens.length);
 
       const payload = {
         notification: {
@@ -106,13 +104,12 @@ exports.notifyVendorOnNewOrder = onDocumentCreated(
   }
 );
 
-
-
 /* =========================================================
-   🔊 PAYMENT SUCCESS → VENDOR VOICE NOTIFICATION (NEW)
+   🔊 PAYMENT SUCCESS → VENDOR VOICE + DRY-RUN PAYOUT LOG
    ========================================================= */
 
-const { onDocumentUpdated } = require("firebase-functions/v2/firestore");
+// DRY-RUN payout engine (NO MONEY MOVEMENT)
+const { runDryRunPayout } = require("./payouts/dryRunPayout");
 
 exports.notifyVendorOnPaymentPaid = onDocumentUpdated(
   "shops/{shopId}/orders/{orderId}",
@@ -137,15 +134,14 @@ exports.notifyVendorOnPaymentPaid = onDocumentUpdated(
         amount = Number(after.totalAmount);
       } else if (Array.isArray(after.items)) {
         amount = after.items.reduce(
-          (sum, item) => sum + Number(item.price || 0) * Number(item.qty || 1),
+          (sum, item) =>
+            sum + Number(item.price || 0) * Number(item.qty || 1),
           0
         );
       }
 
       const itemsText = Array.isArray(after.items)
-        ? after.items
-            .map((i) => `${i.qty || 1} ${i.name}`)
-            .join(", ")
+        ? after.items.map((i) => `${i.qty || 1} ${i.name}`).join(", ")
         : "";
 
       const devicesSnap = await db
@@ -183,6 +179,17 @@ exports.notifyVendorOnPaymentPaid = onDocumentUpdated(
         response.failureCount,
         "failed"
       );
+
+      /* =========================
+         4️⃣ DRY-RUN PAYOUT (LOG ONLY)
+         ========================= */
+
+      await runDryRunPayout({
+        shopId,
+        orderId,
+        amount,
+      });
+
     } catch (error) {
       console.error("❌ Payment voice function error:", error);
     }
