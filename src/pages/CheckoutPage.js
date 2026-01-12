@@ -27,29 +27,12 @@ export default function CheckoutPage() {
   });
 
   const [loading, setLoading] = useState(false);
-  const [razorpayReady, setRazorpayReady] = useState(false);
-
   // Load Razorpay SDK once
-  useEffect(() => {
-    const script = document.createElement("script");
-    script.src = "https://checkout.razorpay.com/v1/checkout.js";
-    script.async = true;
-
-    script.onload = () => {
-      console.log("✅ Razorpay SDK loaded");
-      setRazorpayReady(true);
-    };
-
-    script.onerror = () => {
-      console.error("❌ Razorpay SDK failed to load");
-    };
-
-    document.body.appendChild(script);
-  }, []);
+  
 
   const handlePlaceOrder = async () => {
     try {
-      if (!razorpayReady || !window.Razorpay) {
+      if (!window.Razorpay) {
         alert("Payment system not ready. Please wait and try again.");
         return;
       }
@@ -108,7 +91,7 @@ export default function CheckoutPage() {
     const options = {
 
         key: process.env.REACT_APP_RAZORPAY_KEY_ID,
-      
+        amount: amountInPaise,
         currency: "INR",         // ✅ REQUIRED
 
         order_id: razorpayOrderId,
