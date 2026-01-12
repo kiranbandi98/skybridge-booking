@@ -113,7 +113,6 @@ export default function CheckoutPage() {
 
         order_id: razorpayOrderId,
         name: "SkyBridge",
-        description: "Food Order",
         handler: async function (response) {
           try {
             await fetch(
@@ -144,7 +143,6 @@ export default function CheckoutPage() {
             alert("Payment verification failed");
           }
         },
-        theme: { color: "#0A64F9" },
       };
       console.log("RZP OPTIONS BEFORE OPEN", options);
 
