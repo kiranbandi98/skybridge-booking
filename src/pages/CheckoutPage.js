@@ -27,12 +27,33 @@ export default function CheckoutPage() {
   });
 
   const [loading, setLoading] = useState(false);
+
+  const [razorpayReady, setRazorpayReady] = useState(false);
   // Load Razorpay SDK once
   
 
+
+  useEffect(() => {
+    if (window.Razorpay) {
+      setRazorpayReady(true);
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    script.onload = () => {
+      console.log('✅ Razorpay SDK loaded');
+      setRazorpayReady(true);
+    };
+    script.onerror = () => {
+      console.error('❌ Razorpay SDK failed to load');
+    };
+    document.body.appendChild(script);
+  }, []);
+
   const handlePlaceOrder = async () => {
     try {
-      if (!window.Razorpay) {
+      if (!razorpayReady) {
         alert("Payment system not ready. Please wait and try again.");
         return;
       }
