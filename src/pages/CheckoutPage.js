@@ -108,7 +108,7 @@ export default function CheckoutPage() {
     const options = {
 
         key: process.env.REACT_APP_RAZORPAY_KEY_ID,
-        amount: amountInPaise,   // ✅ REQUIRED
+      
         currency: "INR",         // ✅ REQUIRED
 
         order_id: razorpayOrderId,
