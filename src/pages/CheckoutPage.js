@@ -143,6 +143,7 @@ export default function CheckoutPage() {
         },
         theme: { color: "#0A64F9" },
       };
+      console.log("RZP OPTIONS BEFORE OPEN", options);
 
       const razorpay = new window.Razorpay(options);
       razorpay.open();
