@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect } from "react";
 import { useCart } from "../context/CartContext";
 import { useNavigate, useParams } from "react-router-dom";
 import { saveOrderToFirestore } from "../utils/saveOrder";
-import { getFirestore, doc, getDoc } from "firebase/firestore";
+import { getFirestore } from "firebase/firestore";
 
 export default function CheckoutPage() {
   const db = getFirestore();
@@ -21,7 +22,7 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(false);
   const [razorpayReady, setRazorpayReady] = useState(false);
 
-  // 🔑 Load Razorpay script once
+  // Load Razorpay SDK once
   useEffect(() => {
     const script = document.createElement("script");
     script.src = "https://checkout.razorpay.com/v1/checkout.js";
@@ -42,7 +43,7 @@ export default function CheckoutPage() {
   const handlePlaceOrder = async () => {
     try {
       if (!razorpayReady || !window.Razorpay) {
-        alert("Payment system not ready. Please wait 2 seconds and try again.");
+        alert("Payment system not ready. Please wait and try again.");
         return;
       }
 
@@ -63,26 +64,23 @@ export default function CheckoutPage() {
 
       setLoading(true);
 
-      // 💰 Amount in paise
       const amountInPaise = cartTotal * 100;
-
       console.log("🧪 Creating Razorpay order:", amountInPaise);
 
-      // 1️⃣ Create Razorpay order from backend
+      // Create Razorpay order from backend
       const res = await fetch(
         `${process.env.REACT_APP_BACKEND_URL}/create-order`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ amount: amountInPaise, currency: "INR" }),
+          body: JSON.stringify({ amount: amountInPaise }),
         }
       );
 
       const data = await res.json();
-
       const razorpayOrderId = data.orderId || data.order_id;
 
-      if (!data.success || !razorpayOrderId) {
+      if (!razorpayOrderId) {
         alert("Failed to create payment order");
         setLoading(false);
         return;
@@ -90,34 +88,50 @@ export default function CheckoutPage() {
 
       console.log("✅ Razorpay order created:", razorpayOrderId);
 
-      // 2️⃣ Open Razorpay Checkout
       const safeContact = String(form.phone || "")
         .replace(/\D/g, "")
         .slice(-10);
 
       const options = {
         key: process.env.REACT_APP_RAZORPAY_KEY_ID,
-name: "SkyBridge",
-        description: "Food Order Payment",
-        image: "https://skybridge-booking.onrender.com/logo192.png",
         order_id: razorpayOrderId,
+        name: "SkyBridge",
+        description: "Food Order",
+        handler: async function (response) {
+          try {
+            await fetch(
+              "https://us-central1-skybridge-vendor.cloudfunctions.net/razorpayCallback",
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(response),
+              }
+            );
 
-        // 🔴 REQUIRED FOR LIVE MODE
-        callback_url: `${process.env.REACT_APP_BACKEND_URL}/razorpay-callback`,
-modal: {
-          ondismiss: function () {
-            console.warn("⚠️ Razorpay popup closed by user");
-          },
+            await saveOrderToFirestore({
+              db,
+              shopId,
+              cart,
+              total: cartTotal,
+              customer: form,
+              paymentMode: "razorpay",
+              paymentStatus: "Paid",
+              razorpayOrderId,
+              razorpayPaymentId: response.razorpay_payment_id,
+            });
+
+            clearCart();
+            navigate(`/order-success/${shopId}/${razorpayOrderId}`);
+          } catch (e) {
+            console.error("❌ Verification failed", e);
+            alert("Payment verification failed");
+          }
         },
-
         prefill: {
           name: form.name,
           contact: safeContact,
         },
-
-        theme: {
-          color: "#0a66c2",
-        },
+        theme: { color: "#0A64F9" },
       };
 
       const razorpay = new window.Razorpay(options);
@@ -135,7 +149,6 @@ modal: {
     <div style={{ padding: 20, maxWidth: 600, margin: "0 auto" }}>
       <h2>Checkout</h2>
 
-      {/* Customer Info */}
       <div style={box}>
         <label>Name</label>
         <input
@@ -191,7 +204,6 @@ modal: {
         )}
       </div>
 
-      {/* Order Summary */}
       <div style={box}>
         <h3>Order Summary</h3>
         {cart.map((item, i) => (

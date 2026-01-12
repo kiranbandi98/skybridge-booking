@@ -25,3 +25,4 @@ yarn-error.log*
 # Firebase Admin SDK (DO NOT COMMIT)
 backend1/firebaseServiceKey.json
 .firebase/
+functions/firebase-debug.log
