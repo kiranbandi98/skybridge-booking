@@ -141,10 +141,6 @@ export default function CheckoutPage() {
             alert("Payment verification failed");
           }
         },
-        prefill: {
-          name: form.name,
-          contact: safeContact,
-        },
         theme: { color: "#0A64F9" },
       };
 
