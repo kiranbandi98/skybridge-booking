@@ -5,6 +5,13 @@ import { useNavigate, useParams } from "react-router-dom";
 import { saveOrderToFirestore } from "../utils/saveOrder";
 import { getFirestore } from "firebase/firestore";
 
+
+// ✅ Phone validation helper (REQUIRED)
+const isValidPhone = (phone) => {
+  if (!phone) return false;
+  const cleaned = phone.replace(/\D/g, "");
+  return cleaned.length >= 10 && cleaned.length <= 13;
+};
 export default function CheckoutPage() {
   const db = getFirestore();
   const { cart, cartTotal, clearCart } = useCart();
@@ -92,7 +99,14 @@ export default function CheckoutPage() {
         .replace(/\D/g, "")
         .slice(-10);
 
-      const options = {
+      
+    if (!isValidPhone(form.phone)) {
+      alert("Please enter a valid 10-digit phone number");
+      return;
+    }
+
+    const options = {
+
         key: process.env.REACT_APP_RAZORPAY_KEY_ID,
         order_id: razorpayOrderId,
         name: "SkyBridge",
