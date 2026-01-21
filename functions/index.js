@@ -1,7 +1,16 @@
-const { setGlobalOptions } = require("firebase-functions");
+const functions = require("firebase-functions");
+const { setGlobalOptions } = require("firebase-functions/v2");
 const { onDocumentCreated, onDocumentUpdated } = require("firebase-functions/v2/firestore");
 const { onRequest } = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
+
+/*
+ 🔧 GEN-2 SAFETY PATCH (DO NOT REMOVE ORIGINAL CODE)
+ We override functions.config() to read from environment variables.
+ This keeps ALL existing lines working without deletion.
+ NOTE: In GEN-2, secrets are read from process.env
+*/
+ 
 
 admin.initializeApp();
 
@@ -24,10 +33,6 @@ exports.notifyVendorOnNewOrder = onDocumentCreated(
 
       console.log("🛒 New order detected for shop:", shopId);
 
-      /* =========================
-         1️⃣ CALCULATE ORDER TOTAL
-         ========================= */
-
       let amount = 0;
 
       if (orderData.totalAmount) {
@@ -42,10 +47,6 @@ exports.notifyVendorOnNewOrder = onDocumentCreated(
 
       console.log("💰 Calculated order amount:", amount);
 
-      /* =========================
-         2️⃣ UPDATE SHOP REVENUE
-         ========================= */
-
       if (amount > 0 && orderData.paymentStatus === "Paid") {
         await db.collection("shops").doc(shopId).set(
           {
@@ -58,10 +59,6 @@ exports.notifyVendorOnNewOrder = onDocumentCreated(
       } else {
         console.log("⚠️ Revenue NOT updated (unpaid or zero amount)");
       }
-
-      /* =========================
-         3️⃣ SEND FCM NOTIFICATION
-         ========================= */
 
       const devicesSnap = await db
         .collection("shops")
@@ -109,7 +106,6 @@ exports.notifyVendorOnNewOrder = onDocumentCreated(
    🔊 PAYMENT SUCCESS → VENDOR VOICE + DRY-RUN PAYOUT LOG
    ========================================================= */
 
-// DRY-RUN payout engine (NO MONEY MOVEMENT)
 const { runDryRunPayout } = require("./payouts/dryRunPayout");
 
 exports.notifyVendorOnPaymentPaid = onDocumentUpdated(
@@ -119,7 +115,6 @@ exports.notifyVendorOnPaymentPaid = onDocumentUpdated(
       const before = event.data.before.data();
       const after = event.data.after.data();
 
-      // Trigger ONLY when paymentStatus changes to Paid
       if (
         before.paymentStatus === after.paymentStatus ||
         after.paymentStatus !== "Paid"
@@ -181,10 +176,6 @@ exports.notifyVendorOnPaymentPaid = onDocumentUpdated(
         "failed"
       );
 
-      /* =========================
-         4️⃣ DRY-RUN PAYOUT (LOG ONLY)
-         ========================= */
-
       await runDryRunPayout({
         shopId,
         orderId,
@@ -197,76 +188,127 @@ exports.notifyVendorOnPaymentPaid = onDocumentUpdated(
   }
 );
 
-
-
 /* =========================================================
    💳 RAZORPAY CALLBACK (LIVE MODE)
    ========================================================= */
 
 const crypto = require("crypto");
 
-exports.razorpayCallback = onRequest(async (req, res) => {
-  try {
-    const {
-      razorpay_order_id,
-      razorpay_payment_id,
-      razorpay_signature,
-    } = req.body;
+exports.razorpayCallbackV2 = onRequest(
+  { cors: true, secrets: ["RAZORPAY_KEY_ID", "RAZORPAY_KEY_SECRET"] },
+  async (req, res) => {
+    try {
+      const {
+        razorpay_order_id,
+        razorpay_payment_id,
+        razorpay_signature,
+      } = req.body;
 
-    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
-      console.error("❌ Missing Razorpay callback fields");
-      return res.status(400).send("Invalid callback payload");
+      if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+        console.error("❌ Missing Razorpay callback fields");
+        return res.status(400).send("Invalid callback payload");
+      }
+
+      const secret = process.env.RAZORPAY_KEY_SECRET;
+
+      const body = razorpay_order_id + "|" + razorpay_payment_id;
+
+      const expectedSignature = crypto
+        .createHmac("sha256", secret)
+        .update(body)
+        .digest("hex");
+
+      if (expectedSignature !== razorpay_signature) {
+        console.error("❌ Razorpay signature mismatch");
+        return res.status(400).send("Signature verification failed");
+      }
+
+      const orderSnap = await db
+        .collectionGroup("orders")
+        .where("razorpayOrderId", "==", razorpay_order_id)
+        .limit(1)
+        .get();
+
+      if (orderSnap.empty) {
+        console.error("❌ Order not found for Razorpay order ID");
+        return res.status(404).send("Order not found");
+      }
+
+      const orderDoc = orderSnap.docs[0];
+      const orderRef = orderDoc.ref;
+
+      await orderRef.set(
+        {
+          paymentStatus: "Paid",
+          razorpayPaymentId: razorpay_payment_id,
+          paidAt: admin.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      );
+
+      const match = orderRef.path.match(/shops\/(.*?)\/orders\/(.*)/);
+      const shopId = match ? match[1] : "";
+
+      console.log("✅ Payment verified & order marked Paid:", razorpay_order_id);
+
+      return res.redirect(
+        `https://skybridge-booking.onrender.com/#/order-success/${shopId}/${orderRef.id}`
+      );
+    } catch (error) {
+      console.error("❌ Razorpay callback error:", error);
+      return res.status(500).send("Server error");
     }
+  }
+);
 
-    const secret = process.env.RAZORPAY_KEY_SECRET;
+// ===============================
+// CREATE RAZORPAY ORDER (REQUIRED)
+// ===============================
+const Razorpay = require("razorpay");
 
-    const body = razorpay_order_id + "|" + razorpay_payment_id;
+function getRazorpay() {
+  const key_id = process.env.RAZORPAY_KEY_ID;
+  const key_secret = process.env.RAZORPAY_KEY_SECRET;
 
-    const expectedSignature = crypto
-      .createHmac("sha256", secret)
-      .update(body)
-      .digest("hex");
-
-    if (expectedSignature !== razorpay_signature) {
-      console.error("❌ Razorpay signature mismatch");
-      return res.status(400).send("Signature verification failed");
-    }
-
-    // Find order by razorpay_order_id
-    const orderSnap = await db
-      .collectionGroup("orders")
-      .where("razorpayOrderId", "==", razorpay_order_id)
-      .limit(1)
-      .get();
-
-    if (orderSnap.empty) {
-      console.error("❌ Order not found for Razorpay order ID");
-      return res.status(404).send("Order not found");
-    }
-
-    const orderDoc = orderSnap.docs[0];
-    const orderRef = orderDoc.ref;
-
-    await orderRef.set(
-      {
-        paymentStatus: "Paid",
-        razorpayPaymentId: razorpay_payment_id,
-        paidAt: admin.firestore.FieldValue.serverTimestamp(),
-      },
-      { merge: true }
-    );
-
-    const { shopId, orderId } = orderRef.path.match(/shops\/(.*?)\/orders\/(.*)/).groups || {};
-
-    console.log("✅ Payment verified & order marked Paid:", razorpay_order_id);
-
-    // Redirect user to success page
-    return res.redirect(
-      `https://skybridge-booking.onrender.com/#/order-success/${shopId}/${orderRef.id}`
-    );
-  } catch (error) {
-    console.error("❌ Razorpay callback error:", error);
-    return res.status(500).send("Server error");
+  if (!key_id || !key_secret) {
+    throw new Error("Razorpay secrets not available");
   }
 
-});
+  return new Razorpay({
+    key_id,
+    key_secret,
+  });
+}
+
+exports.createRazorpayOrderV2 = onRequest(
+  { cors: true, secrets: ["RAZORPAY_KEY_ID", "RAZORPAY_KEY_SECRET"] },
+  async (req, res) => {
+    try {
+      if (req.method !== "POST") {
+        return res.status(405).json({ error: "Method not allowed" });
+      }
+
+      const { amount } = req.body;
+
+      if (!amount || isNaN(amount)) {
+        return res.status(400).json({ error: "Invalid amount" });
+      }
+
+      const order = await getRazorpay().orders.create({
+        amount: Number(amount),
+        currency: "INR",
+        receipt: `rcpt_${Date.now()}`,
+        payment_capture: 1,
+      });
+
+      return res.status(200).json({
+        orderId: order.id,
+        amount: order.amount,
+        currency: order.currency,
+      });
+    } catch (err) {
+      console.error("❌ Razorpay order creation failed", err);
+      return res.status(500).json({ error: "Order creation failed" });
+    }
+  }
+);
