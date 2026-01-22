@@ -1,50 +1,124 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>SkyBridge Customer Test</title>
+  <meta charset="UTF-8" />
+  <title>SkyBridge – Razorpay Checkout Test</title>
+
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f2f2f2;
+      padding: 40px;
+    }
+    .card {
+      max-width: 400px;
+      margin: auto;
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+    button {
+      background: #3399cc;
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+    button:hover {
+      background: #2b88b8;
+    }
+  </style>
 </head>
 <body>
-  <h2>SkyBridge Customer Order Test</h2>
 
-  <button onclick="placeOrder()">Place Order for Shop</button>
+  <div class="card">
+    <h2>SkyBridge – Razorpay Checkout Test</h2>
+    <p>Amount: <strong>₹100</strong></p>
+    <button onclick="payNow()">Pay ₹100</button>
+  </div>
 
   <script>
-    const SHOP_ID = "VJIcnxDUaKep2t7wyBHL";
-
-    async function placeOrder() {
-      // STEP 1: Create Razorpay order
-      const orderRes = await fetch("http://localhost:5000/create-order", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: 10000 }) // ₹100
-      });
-
-      const order = await orderRes.json();
-
-      alert("Order created. Now simulating payment success.");
-
-      // STEP 2: Simulate payment verification
-      const verifyRes = await fetch("http://localhost:5000/verify-payment", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          razorpay_order_id: order.orderId,
-          razorpay_payment_id: "test_payment_id",
-          razorpay_signature: "test_signature",
-          orderData: {
-            shopId: SHOP_ID,
-            customerName: "Test Customer",
-            totalAmount: 100,
-            items: [{ name: "Test Item", qty: 1 }]
+    async function payNow() {
+      try {
+        const orderResponse = await fetch(
+          "https://createrazorpayorderv2-lfjp2mpsfq-uc.a.run.app",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              amount: 100
+            })
           }
-        })
-      });
+        );
 
-      const result = await verifyRes.json();
-      console.log(result);
+        if (!orderResponse.ok) {
+          alert("Order API failed");
+          return;
+        }
 
-      alert("Order placed. Check vendor side 🔔");
+        const orderData = await orderResponse.json();
+
+        const options = {
+          key: "rzp_live_RxcI5fmze5rBwM",
+          amount: orderData.amount,
+          currency: orderData.currency,
+          name: "SkyBridge",
+          description: "Test Payment",
+          order_id: orderData.orderId,
+
+          handler: async function (response) {
+            const verifyResponse = await fetch(
+              "https://razorpaycallbackv2-lfjp2mpsfq-uc.a.run.app",
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature
+                })
+              }
+            );
+
+            const verifyResult = await verifyResponse.json();
+
+            if (verifyResult.success) {
+              alert("Payment Successful!");
+            } else {
+              alert("Payment verification failed");
+            }
+          },
+
+          prefill: {
+            name: "Test Customer",
+            email: "test@example.com",
+            contact: "9999999999"
+          },
+
+          theme: {
+            color: "#3399cc"
+          }
+        };
+
+        const rzp = new Razorpay(options);
+        rzp.open();
+
+      } catch (err) {
+        console.error(err);
+        alert("Something went wrong");
+      }
     }
   </script>
+
 </body>
 </html>

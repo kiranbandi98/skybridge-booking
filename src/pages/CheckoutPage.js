@@ -80,7 +80,7 @@ export default function CheckoutPage() {
 
       // Create Razorpay order from backend
       const res = await fetch(
-        `${process.env.REACT_APP_BACKEND_URL}/create-order`,
+         "https://createrazorpayorderv2-lfjp2mpsfq-uc.a.run.app", 
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -111,7 +111,7 @@ export default function CheckoutPage() {
 
     const options = {
 
-        key: process.env.REACT_APP_RAZORPAY_KEY_ID,
+        key: "rzp_live_RxcI5fmze5rBwM",
         amount: amountInPaise,
         currency: "INR",         // ✅ REQUIRED
 
@@ -120,7 +120,7 @@ export default function CheckoutPage() {
         handler: async function (response) {
           try {
             await fetch(
-              "https://us-central1-skybridge-vendor.cloudfunctions.net/razorpayCallback",
+              "https://razorpaycallbackv2-lfjp2mpsfq-uc.a.run.app",
               {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
