@@ -204,7 +204,7 @@ exports.razorpayCallbackV2 = onRequest(
 
       if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
         console.error("❌ Missing Razorpay callback fields");
-        return res.status(400).send("Invalid callback payload");
+        return res.status(400).json({ success: false, error: "INVALID_CALLBACK_PAYLOAD" });
       }
 
       const secret = process.env.RAZORPAY_KEY_SECRET;
@@ -216,7 +216,7 @@ exports.razorpayCallbackV2 = onRequest(
 
       if (expectedSignature !== razorpay_signature) {
         console.error("❌ Razorpay signature mismatch");
-        return res.status(400).send("Signature verification failed");
+        return res.status(400).json({ success: false, error: "SIGNATURE_VERIFICATION_FAILED" });
       }
 
       // ✅ READ ORDER MAPPING (NO QUERY, NO COLLECTION GROUP)
@@ -225,7 +225,7 @@ exports.razorpayCallbackV2 = onRequest(
 
       if (!mapSnap.exists) {
         console.error("❌ Order mapping not found");
-        return res.status(404).send("Order mapping missing");
+        return res.status(404).json({ success: false, error: "ORDER_MAPPING_MISSING" });
       }
 
       const { shopId, orderId } = mapSnap.data();
@@ -253,7 +253,7 @@ exports.razorpayCallbackV2 = onRequest(
       });
     } catch (error) {
       console.error("❌ Razorpay callback error:", error);
-      return res.status(500).send("Server error");
+      return res.status(500).json({ success: false, error: "SERVER_ERROR" });
     }
   }
 );
@@ -297,6 +297,12 @@ exports.createRazorpayOrderV2 = onRequest(
         currency: "INR",
         receipt: `rcpt_${Date.now()}`,
         payment_capture: 1,
+      });
+
+      await db.collection("razorpayOrders").doc(order.id).set({
+        shopId: req.body.shopId || null,
+        orderId: req.body.orderId || order.id,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
       return res.status(200).json({
