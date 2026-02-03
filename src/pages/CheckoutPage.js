@@ -2,8 +2,6 @@
 import React, { useState, useEffect } from "react";
 import { useCart } from "../context/CartContext";
 import { useNavigate, useParams } from "react-router-dom";
-import { saveOrderToFirestore } from "../utils/saveOrder";
-import { getFirestore } from "firebase/firestore";
 
 
 // ✅ Phone validation helper (REQUIRED)
@@ -13,7 +11,6 @@ const isValidPhone = (phone) => {
   return cleaned.length >= 10 && cleaned.length <= 13;
 };
 export default function CheckoutPage() {
-  const db = getFirestore();
   const { cart, cartTotal, clearCart } = useCart();
   const navigate = useNavigate();
   const { shopId } = useParams();
@@ -126,25 +123,13 @@ export default function CheckoutPage() {
         handler: async function (response) {
           try {
             await fetch(
-              "https://razorpaycallbackv2-lfjp2mpsfq-uc.a.run.app",
+              "https://razorpaycallbackv2-lfjp2mpsfq-uc.a.run.app/razorpayCallbackV2",
               {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(response),
               }
             );
-
-            await saveOrderToFirestore({
-              db,
-              shopId,
-              cart,
-              total: cartTotal,
-              customer: form,
-              paymentMode: "razorpay",
-              paymentStatus: "Paid",
-              razorpayOrderId,
-              razorpayPaymentId: response.razorpay_payment_id,
-            });
 
             clearCart();
             navigate(`/order-success/${shopId}/${razorpayOrderId}`);
