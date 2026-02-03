@@ -1,14 +1,21 @@
 import { db } from "../utils/firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
-export async function saveOrderToFirestore(shopId, orderData) {
+// FIX: accept a single object, not positional args
+export async function saveOrderToFirestore({
+  shopId,
+  ...orderData
+}) {
   try {
-    // ✅ CORRECT: orders saved under the shop
+    if (!shopId || typeof shopId !== "string") {
+      throw new Error("Invalid shopId passed to saveOrderToFirestore");
+    }
+
     const docRef = await addDoc(
       collection(db, "shops", shopId, "orders"),
       {
         ...orderData,
-        shopId: shopId, // still useful for queries/debugging
+        shopId,
         status: "paid",
         createdAt: serverTimestamp(),
       }

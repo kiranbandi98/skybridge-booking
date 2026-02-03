@@ -75,6 +75,12 @@ export default function CheckoutPage() {
 
       setLoading(true);
 
+      if (!isValidPhone(form.phone)) {
+        alert("Please enter a valid 10-digit phone number");
+        setLoading(false);
+        return;
+      }
+
       const amountInPaise = cartTotal * 100;
       console.log("🧪 Creating Razorpay order:", amountInPaise);
 

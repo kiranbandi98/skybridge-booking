@@ -3,6 +3,7 @@ const { setGlobalOptions } = require("firebase-functions/v2");
 const { onDocumentCreated, onDocumentUpdated } = require("firebase-functions/v2/firestore");
 const { onRequest } = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
+const crypto = require("crypto");
 
 /*
  🔧 GEN-2 SAFETY PATCH (DO NOT REMOVE ORIGINAL CODE)
@@ -191,11 +192,8 @@ exports.notifyVendorOnPaymentPaid = onDocumentUpdated(
 /* =========================================================
    💳 RAZORPAY CALLBACK (LIVE MODE)
    ========================================================= */
-
-const crypto = require("crypto");
-
 exports.razorpayCallbackV2 = onRequest(
-  { cors: true, secrets: ["RAZORPAY_KEY_ID", "RAZORPAY_KEY_SECRET"] },
+  { cors: true, secrets: ["RAZORPAY_KEY_SECRET"] },
   async (req, res) => {
     try {
       const {
@@ -211,11 +209,9 @@ exports.razorpayCallbackV2 = onRequest(
 
       const secret = process.env.RAZORPAY_KEY_SECRET;
 
-      const body = razorpay_order_id + "|" + razorpay_payment_id;
-
       const expectedSignature = crypto
         .createHmac("sha256", secret)
-        .update(body)
+        .update(`${razorpay_order_id}|${razorpay_payment_id}`)
         .digest("hex");
 
       if (expectedSignature !== razorpay_signature) {
@@ -223,19 +219,22 @@ exports.razorpayCallbackV2 = onRequest(
         return res.status(400).send("Signature verification failed");
       }
 
-      const orderSnap = await db
-        .collectionGroup("orders")
-        .where("razorpayOrderId", "==", razorpay_order_id)
-        .limit(1)
-        .get();
+      // ✅ READ ORDER MAPPING (NO QUERY, NO COLLECTION GROUP)
+      const mapRef = db.collection("razorpayOrders").doc(razorpay_order_id);
+      const mapSnap = await mapRef.get();
 
-      if (orderSnap.empty) {
-        console.error("❌ Order not found for Razorpay order ID");
-        return res.status(404).send("Order not found");
+      if (!mapSnap.exists) {
+        console.error("❌ Order mapping not found");
+        return res.status(404).send("Order mapping missing");
       }
 
-      const orderDoc = orderSnap.docs[0];
-      const orderRef = orderDoc.ref;
+      const { shopId, orderId } = mapSnap.data();
+
+      const orderRef = db
+        .collection("shops")
+        .doc(shopId)
+        .collection("orders")
+        .doc(orderId);
 
       await orderRef.set(
         {
@@ -246,13 +245,10 @@ exports.razorpayCallbackV2 = onRequest(
         { merge: true }
       );
 
-      const match = orderRef.path.match(/shops\/(.*?)\/orders\/(.*)/);
-      const shopId = match ? match[1] : "";
-
-      console.log("✅ Payment verified & order marked Paid:", razorpay_order_id);
+      console.log("✅ Payment verified & order marked Paid");
 
       return res.redirect(
-        `https://skybridge-booking.onrender.com/#/order-success/${shopId}/${orderRef.id}`
+        `https://skybridge-booking.onrender.com/#/order-success/${shopId}/${orderId}`
       );
     } catch (error) {
       console.error("❌ Razorpay callback error:", error);
@@ -261,6 +257,7 @@ exports.razorpayCallbackV2 = onRequest(
   }
 );
 
+ 
 // ===============================
 // CREATE RAZORPAY ORDER (REQUIRED)
 // ===============================
