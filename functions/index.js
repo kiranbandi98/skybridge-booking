@@ -247,9 +247,10 @@ exports.razorpayCallbackV2 = onRequest(
 
       console.log("✅ Payment verified & order marked Paid");
 
-      return res.redirect(
-        `https://skybridge-booking.onrender.com/#/order-success/${shopId}/${orderId}`
-      );
+      return res.status(200).json({
+        success: true,
+        redirectUrl: `https://skybridge-booking.onrender.com/#/order-success/${shopId}/${orderId}`
+      });
     } catch (error) {
       console.error("❌ Razorpay callback error:", error);
       return res.status(500).send("Server error");

@@ -122,7 +122,7 @@ export default function CheckoutPage() {
         name: "SkyBridge",
         handler: async function (response) {
           try {
-            await fetch(
+            const verifyRes = await fetch(
               "https://razorpaycallbackv2-lfjp2mpsfq-uc.a.run.app/razorpayCallbackV2",
               {
                 method: "POST",
@@ -131,8 +131,14 @@ export default function CheckoutPage() {
               }
             );
 
-            clearCart();
-            navigate(`/order-success/${shopId}/${razorpayOrderId}`);
+            const verifyData = await verifyRes.json();
+
+            if (verifyData.redirectUrl) {
+              clearCart();
+              window.location.href = verifyData.redirectUrl;
+            } else {
+              throw new Error("No redirect URL from server");
+            }
           } catch (e) {
             console.error("❌ Verification failed", e);
             alert("Payment verification failed");
