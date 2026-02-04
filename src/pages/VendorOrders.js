@@ -406,7 +406,9 @@ const tryPlayNewOrderSound = () => {
     const colRef = collection(db, "shops", shopId, "orders");
 
     const unsubscribe = onSnapshot(colRef, (snapshot) => {
-      let mapped = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+      let mapped = snapshot.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .filter((o) => (o.paymentStatus || "").toLowerCase() === "paid");
 
       snapshot.docChanges().forEach((change) => {
           
@@ -428,6 +430,7 @@ const tryPlayNewOrderSound = () => {
         }
 
         if (change.type === "added") {
+          if ((order.paymentStatus || "").toLowerCase() !== "paid") return;
           if (initialLoadRef.current) {
             // during first load, set lastOrderIdRef to the most recent doc so next adds are real new
             lastOrderIdRef.current = snapshot.docs[0]?.id || orderId;
