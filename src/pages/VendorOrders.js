@@ -1,13 +1,15 @@
 import React, { useEffect, useState, useRef } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { db } from "../utils/firebase";
-import {
+import { query, where,  useNavigate, useParams } from "react-router-dom";
+import { query, where,  db } from "../utils/firebase";
+import { query, where, 
   collection,
   onSnapshot,
   doc,
   updateDoc,
 } from "firebase/firestore";
-import { getAuth, signOut } from "firebase/auth"; // ⭐ Added for logout
+// ⬆ imports updated to include query & where
+
+import { query, where,  getAuth, signOut } from "firebase/auth"; // ⭐ Added for logout
 
 /* ---------------- NAVBAR (Safe Insert) ---------------- */
  
