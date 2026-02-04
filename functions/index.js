@@ -299,6 +299,27 @@ exports.createRazorpayOrderV2 = onRequest(
         payment_capture: 1,
       });
 
+      // ✅ CREATE ORDER DOCUMENT WITH STANDARD SCHEMA (BEFORE PAYMENT)
+      const { shopId, totalAmount, items = [] } = req.body;
+
+      if (shopId && totalAmount !== undefined) {
+        await db
+          .collection("shops")
+          .doc(shopId)
+          .collection("orders")
+          .doc(order.id)
+          .set(
+            {
+              items,
+              totalAmount: Number(totalAmount),
+              paymentStatus: "Pending",
+              createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            },
+            { merge: true }
+          );
+      }
+
+
       await db.collection("razorpayOrders").doc(order.id).set({
         shopId: req.body.shopId || null,
         orderId: req.body.orderId || order.id,

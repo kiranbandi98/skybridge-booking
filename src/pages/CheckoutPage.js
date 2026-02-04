@@ -87,7 +87,19 @@ export default function CheckoutPage() {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ amount: amountInPaise, shopId }),
+          body: JSON.stringify({
+            amount: amountInPaise,
+            shopId,
+            totalAmount: cartTotal,
+            items: cart,
+            orderType: form.orderType,
+            customer: {
+              name: form.name,
+              phone: form.phone,
+              address: form.address || "",
+              table: form.table || "",
+            },
+          }),
         }
       );
 
