@@ -1,15 +1,13 @@
 import React, { useEffect, useState, useRef } from "react";
-import { query, where,  useNavigate, useParams } from "react-router-dom";
-import { query, where,  db } from "../utils/firebase";
-import { query, where, 
+import { useNavigate, useParams } from "react-router-dom";
+import { db } from "../utils/firebase";
+import {
   collection,
   onSnapshot,
   doc,
   updateDoc,
 } from "firebase/firestore";
-// ⬆ imports updated to include query & where
-
-import { query, where,  getAuth, signOut } from "firebase/auth"; // ⭐ Added for logout
+import { getAuth, signOut } from "firebase/auth"; // ⭐ Added for logout
 
 /* ---------------- NAVBAR (Safe Insert) ---------------- */
  
@@ -405,12 +403,10 @@ const tryPlayNewOrderSound = () => {
 
   /* ------------------ Firestore real-time listener ------------------ */
   useEffect(() => {
-    const colRef = query(collection(db, "shops", shopId, "orders"), where("paymentStatus", "==", "Paid"));
+    const colRef = collection(db, "shops", shopId, "orders");
 
     const unsubscribe = onSnapshot(colRef, (snapshot) => {
-      let mapped = snapshot.docs
-        .map((d) => ({ id: d.id, ...d.data() }))
-        .filter((o) => (o.paymentStatus || "").toLowerCase() === "paid");
+      let mapped = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
 
       snapshot.docChanges().forEach((change) => {
           
@@ -432,7 +428,6 @@ const tryPlayNewOrderSound = () => {
         }
 
         if (change.type === "added") {
-          if ((order.paymentStatus || "").toLowerCase() !== "paid") return;
           if (initialLoadRef.current) {
             // during first load, set lastOrderIdRef to the most recent doc so next adds are real new
             lastOrderIdRef.current = snapshot.docs[0]?.id || orderId;
