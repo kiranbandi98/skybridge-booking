@@ -403,7 +403,10 @@ const tryPlayNewOrderSound = () => {
 
   /* ------------------ Firestore real-time listener ------------------ */
   useEffect(() => {
-    const colRef = collection(db, "shops", shopId, "orders");
+    const colRef = query(
+      collection(db, "shops", shopId, "orders"),
+      where("paymentStatus", "==", "Paid")
+    );
 
     const unsubscribe = onSnapshot(colRef, (snapshot) => {
       let mapped = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));

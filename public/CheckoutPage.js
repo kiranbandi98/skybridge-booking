@@ -135,7 +135,7 @@ export default function CheckoutPage() {
         handler: async function (response) {
           try {
             const verifyRes = await fetch(
-              "https://razorpaycallbackv2-lfjp2mpsfq-uc.a.run.app/razorpayCallbackV2",
+              "https://razorpaycallbackv2-lfjp2mpsfq-uc.a.run.app",
               {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },

@@ -246,6 +246,18 @@ exports.razorpayCallbackV2 = onRequest(
       );
 
       console.log("✅ Payment verified & order marked Paid");
+      
+      // ✅ CREATE ORDER AFTER PAYMENT SUCCESS (ONLY PLACE)
+      const mapData = mapSnap.data();
+      await orderRef.set({
+        items: mapData.items || [],
+        totalAmount: Number(mapData.totalAmount || 0),
+        paymentStatus: "Paid",
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        paidAt: admin.firestore.FieldValue.serverTimestamp(),
+        razorpayPaymentId: razorpay_payment_id,
+      }, { merge: true });
+
 
       return res.status(200).json({
         success: true,
@@ -298,35 +310,8 @@ exports.createRazorpayOrderV2 = onRequest(
         receipt: `rcpt_${Date.now()}`,
         payment_capture: 1,
       });
-
-      // ✅ CREATE ORDER DOCUMENT WITH STANDARD SCHEMA (BEFORE PAYMENT)
-      const { shopId, totalAmount, items = [] } = req.body;
-
-      if (shopId && totalAmount !== undefined) {
-        await db
-          .collection("shops")
-          .doc(shopId)
-          .collection("orders")
-          .doc(order.id)
-          .set(
-            {
-              items,
-              totalAmount: Number(totalAmount),
-              paymentStatus: "Pending",
-              createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            },
-            { merge: true }
-          );
-      }
-
-
-      await db.collection("razorpayOrders").doc(order.id).set({
-        shopId: req.body.shopId || null,
-        orderId: req.body.orderId || order.id,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
-
-      return res.status(200).json({
+      // ❌ ORDER CREATION BEFORE PAYMENT REMOVED (created after payment success)
+return res.status(200).json({
         orderId: order.id,
         amount: order.amount,
         currency: order.currency,
