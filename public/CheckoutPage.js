@@ -8,7 +8,7 @@ import { useNavigate, useParams } from "react-router-dom";
 const isValidPhone = (phone) => {
   if (!phone) return false;
   const cleaned = phone.replace(/\D/g, "");
-  return cleaned.length >= 10 && cleaned.length <= 13;Z
+  return cleaned.length >= 10 && cleaned.length <= 13;
 };
 export default function CheckoutPage() {
   const { cart, cartTotal, clearCart } = useCart();
