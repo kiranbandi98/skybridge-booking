@@ -7,6 +7,7 @@ import {
   doc,
   updateDoc,
 } from "firebase/firestore";
+import { query, where } from "firebase/firestore";
 import { getAuth, signOut } from "firebase/auth"; // ⭐ Added for logout
 
 /* ---------------- NAVBAR (Safe Insert) ---------------- */
