@@ -195,6 +195,15 @@ exports.notifyVendorOnPaymentPaid = onDocumentUpdated(
 exports.razorpayCallbackV2 = onRequest(
   { cors: true, secrets: ["RAZORPAY_KEY_SECRET"] },
   async (req, res) => {
+    // ✅ Explicit CORS + preflight handling (browser-safe)
+    res.set("Access-Control-Allow-Origin", "*");
+    res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+    res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+
+    if (req.method === "OPTIONS") {
+      return res.status(204).send("");
+    }
+
     try {
       const {
         razorpay_order_id,
@@ -247,16 +256,6 @@ exports.razorpayCallbackV2 = onRequest(
 
       console.log("✅ Payment verified & order marked Paid");
       
-      // ✅ CREATE ORDER AFTER PAYMENT SUCCESS (ONLY PLACE)
-      const mapData = mapSnap.data();
-      await orderRef.set({
-        items: mapData.items || [],
-        totalAmount: Number(mapData.totalAmount || 0),
-        paymentStatus: "Paid",
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        paidAt: admin.firestore.FieldValue.serverTimestamp(),
-        razorpayPaymentId: razorpay_payment_id,
-      }, { merge: true });
 
 
       return res.status(200).json({
