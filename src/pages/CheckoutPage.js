@@ -81,6 +81,9 @@ export default function CheckoutPage() {
       const amountInPaise = cartTotal * 100;
       console.log("🧪 Creating Razorpay order:", amountInPaise);
 
+      // ✅ REQUIRED: internal orderId for backend mapping
+      const internalOrderId = `ord_${Date.now()}`;
+
       // Create Razorpay order from backend
       const res = await fetch(
          "https://createrazorpayorderv2-lfjp2mpsfq-uc.a.run.app", 
@@ -90,6 +93,7 @@ export default function CheckoutPage() {
           body: JSON.stringify({
             amount: amountInPaise,
             shopId,
+            orderId: internalOrderId,
             totalAmount: cartTotal,
             items: cart,
             orderType: form.orderType,
