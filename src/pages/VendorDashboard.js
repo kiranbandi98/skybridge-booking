@@ -1,6 +1,7 @@
 // ⭐ UPDATED VendorDashboard.js WITH NAVBAR + LOGOUT + CORRECT SHOP ID
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { QRCodeCanvas } from "qrcode.react"; // ✅ QR CODE
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { db } from "../utils/firebase";
 import { collection, onSnapshot, doc, getDoc, updateDoc } from "firebase/firestore";
@@ -63,6 +64,7 @@ export default function VendorDashboard() {
     localStorage.getItem("voiceAnnounceMode") || "AMOUNT_ONLY"
   );
   const { shopId } = useParams();
+  const shopUrl = `${window.location.origin}/shop/${shopId}`;
   const [orders, setOrders] = useState([]);
   const [shopBanner, setShopBanner] = useState("");
   const [shop, setShop] = useState(null);
@@ -264,6 +266,20 @@ export default function VendorDashboard() {
   // ---------------------------------------------------------
   // ⭐ TOP NAVIGATION BAR (Style 1 — Added safely)
   // ---------------------------------------------------------
+  function downloadQRCode() {
+    const canvas = document.getElementById("shop-qr-canvas");
+    if (!canvas) return;
+    const pngUrl = canvas
+      .toDataURL("image/png")
+      .replace("image/png", "image/octet-stream");
+    const link = document.createElement("a");
+    link.href = pngUrl;
+    link.download = `shop-${shopId}-qr.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
   const Navbar = () => (
      
     <div
@@ -388,6 +404,56 @@ export default function VendorDashboard() {
           </div>
         )}
       
+      
+      {/* ✅ SHOP QR CODE (PERMANENT, SHOP-SCOPED) */}
+      <div
+        style={{
+          marginBottom: 24,
+          padding: 16,
+          background: "#fff",
+          borderRadius: 10,
+          boxShadow: "0 4px 14px rgba(0,0,0,0.06)",
+        }}
+      >
+        <div style={{ fontWeight: 700, marginBottom: 6 }}>
+          Your Shop QR Code
+        </div>
+
+        <div style={{ fontSize: 14, color: "#555", marginBottom: 10 }}>
+          Print and place this QR in your shop.
+          Menu updates automatically — no need to change QR.
+        </div>
+
+        <QRCodeCanvas
+         id="shop-qr-canvas"
+         value={shopUrl}
+         size={220}
+         level="H"
+          includeMargin
+          />
+        <div style={{ marginTop: 12 }}>
+          <button
+            onClick={downloadQRCode}
+            style={{
+              background: "#0366a6",
+              color: "white",
+              border: "none",
+              padding: "8px 14px",
+              borderRadius: 6,
+              cursor: "pointer",
+              fontWeight: 600,
+            }}
+          >
+            Download QR Code
+          </button>
+        </div>
+
+        <div style={{ marginTop: 6, fontSize: 12, color: "#777" }}>
+          Linked URL: {shopUrl}
+        </div>
+      </div>
+
+
       {/* ⚡ INSTANT PAYOUT CONSENT (SAFE, DATA ONLY) */}
       <div
         style={{
