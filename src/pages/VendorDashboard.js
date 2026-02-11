@@ -64,7 +64,8 @@ export default function VendorDashboard() {
     localStorage.getItem("voiceAnnounceMode") || "AMOUNT_ONLY"
   );
   const { shopId } = useParams();
-  const shopUrl = `${window.location.origin}/shop/${shopId}`;
+  const shopUrl = `${window.location.origin}/#/shop/${shopId}`;
+
   const [orders, setOrders] = useState([]);
   const [shopBanner, setShopBanner] = useState("");
   const [shop, setShop] = useState(null);
