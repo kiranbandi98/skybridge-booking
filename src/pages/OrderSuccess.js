@@ -9,6 +9,8 @@ export default function OrderSuccess() {
   // ✅ MULTI-VENDOR PARAMS
   const { shopId, orderId } = useParams();
   const [order, setOrder] = useState(null);
+  const [now, setNow] = useState(new Date());
+
 
   // 🔥 Listen to order inside correct shop
   useEffect(() => {
@@ -25,7 +27,14 @@ export default function OrderSuccess() {
 
     return () => unsub();
   }, [shopId, orderId]);
+  // ⏱ Auto update timer every 60 seconds
+useEffect(() => {
+  const interval = setInterval(() => {
+    setNow(new Date());
+  }, 60000);
 
+  return () => clearInterval(interval);
+}, []);
   if (!order) return <h2 style={{ padding: 20 }}>Loading...</h2>;
 
   // 🎨 Status colors
@@ -43,12 +52,65 @@ export default function OrderSuccess() {
     <div style={{ padding: 30, maxWidth: 700, margin: "0 auto" }}>
       <h1 style={{ color: "#28a745" }}>🎉 Payment Successful</h1>
 
-      <h3>Order ID: {orderId}</h3>
+       <h3>Order ID: {orderId}</h3>
 
-      <p>
-        <b>Total Paid:</b> ₹{order.totalAmount}
-      </p>
+{/* 🕒 Order Time Display */}
+{order?.createdAt && (() => {
+  const d = order.createdAt?.toDate
+    ? order.createdAt.toDate()
+    : new Date(order.createdAt);
 
+ const currentTime = now;
+ const minutes = Math.floor((currentTime - d) / 60000);
+
+
+  return (
+    <div style={{ marginTop: 10 }}>
+      <div style={{ fontSize: 14, color: "#555" }}>
+        🕒 {d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+      </div>
+
+      <div
+        style={{
+          marginTop: 6,
+          padding: "6px 12px",
+          borderRadius: 8,
+          background: "#e8f5e9",
+          color: "#2e7d32",
+          fontWeight: 600,
+          display: "inline-block",
+          fontSize: 13,
+        }}
+      >
+        ⏱ {minutes} mins ago
+      </div>
+    </div>
+  );
+})()}
+
+<p>
+  <b>Total Paid:</b> ₹{order.totalAmount}
+</p>
+
+        {/* 🕒 Order Time */}
+{order.timestamp?.seconds && (
+  <p
+    style={{
+      marginTop: 10,
+      fontWeight: 600,
+      color: "#555",
+      display: "flex",
+      alignItems: "center",
+      gap: 6,
+    }}
+  >
+    🕒 Ordered At:{" "}
+    {new Date(order.timestamp.seconds * 1000).toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    })}
+  </p>
+)}
       {/* ✅ Order Status */}
       <div style={{ marginTop: 25 }}>
         <h3>Order Status</h3>

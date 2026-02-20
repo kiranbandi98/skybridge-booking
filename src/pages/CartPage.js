@@ -6,7 +6,7 @@ import { useNavigate, useParams } from "react-router-dom";
 const isValidPhone = (phone) => {
   if (!phone) return false;
   const cleaned = phone.replace(/\D/g, "");
-  return cleaned.length >= 10 && cleaned.length <= 13;
+  return cleaned.length === 10;
 };
 
 export default function CartPage() {
@@ -19,7 +19,7 @@ export default function CartPage() {
   const [form, setForm] = useState({
     name: "",
     phone: "",
-    orderType: "delivery",
+    orderType: "dinein",
     address: "",
     table: "",
   });
@@ -88,6 +88,13 @@ export default function CartPage() {
             totalAmount: cartTotal,
             items: cart,
             orderType: form.orderType,
+
+            // ✅ Added for Vendor Dashboard compatibility
+            deliveryAddress:
+              form.orderType === "delivery" ? form.address || "" : "",
+            tableNumber:
+              form.orderType === "dinein" ? form.table || "" : "",
+
             customer: {
               name: form.name,
               phone: form.phone,
@@ -116,7 +123,8 @@ export default function CartPage() {
         handler: async function (response) {
           try {
             const verifyRes = await fetch(
-              "https://asia-south1-skybridge-vendor.cloudfunctions.net/razorpayCallbackV2",
+             "https://us-central1-skybridge-vendor.cloudfunctions.net/razorpayCallbackV2",
+              //"https://asia-south1-skybridge-vendor.cloudfunctions.net/razorpayCallbackV2",
               {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -234,21 +242,70 @@ export default function CartPage() {
               type="tel"
               placeholder="Phone Number"
               value={form.phone}
-              onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              onChange={(e) => {
+                const onlyNums = e.target.value.replace(/\D/g, "");
+                if (onlyNums.length <= 10) {
+                  setForm({ ...form, phone: onlyNums });
+                }
+              }}
               style={{ width: "100%", padding: 8, marginBottom: 10 }}
             />
 
-            <select
-              value={form.orderType}
-              onChange={(e) =>
-                setForm({ ...form, orderType: e.target.value })
-              }
-              style={{ width: "100%", padding: 8, marginBottom: 10 }}
-            >
-              <option value="delivery">Delivery</option>
-              <option value="pickup">Pickup</option>
-              <option value="dinein">Dine-in</option>
-            </select>
+            <div style={{ display: "flex", gap: 10, marginBottom: 15 }}>
+              {["dinein", "pickup", "delivery"].map((type) => (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => setForm({ ...form, orderType: type })}
+                  style={{
+                    flex: 1,
+                    padding: 10,
+                    borderRadius: 8,
+                    border: form.orderType === type ? "2px solid #0366d6" : "1px solid #ccc",
+                    background: form.orderType === type ? "#e6f0ff" : "#fff",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  {type === "delivery" && "🚚 Delivery"}
+                  {type === "pickup" && "🏪 Pickup"}
+                  {type === "dinein" && "🍽 Dine-in"}
+                </button>
+              ))}
+            {/* Order Type Information Box */}
+            <div style={{
+              marginTop: 10,
+              padding: 12,
+              borderRadius: 8,
+              background: "#f8f9fa",
+              border: "1px solid #e0e0e0",
+              fontSize: 14,
+              marginBottom: 10
+            }}>
+              {form.orderType === "dinein" && (
+                <div>
+                  🍽 <b>Dine-in (Book Table)</b><br />
+                  Book your table in advance. Food will be served directly to your table number. Pre-booking available.
+                </div>
+              )}
+
+              {form.orderType === "pickup" && (
+                <div>
+                  🏪 <b>Pickup</b><br />
+                  Order online and eat in front of our shop. No delivery charges. Collect directly from the counter.
+                </div>
+              )}
+
+              {form.orderType === "delivery" && (
+                <div>
+                  🚚 <b>Delivery</b><br />
+                  Free delivery within 1.5 KM. If address is above 1.5 KM, delivery charges apply. Minimum order ₹210.
+                </div>
+              )}
+            </div>
+
+
+            </div>
 
             {form.orderType === "delivery" && (
               <input

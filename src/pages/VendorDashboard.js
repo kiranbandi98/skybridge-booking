@@ -197,52 +197,63 @@ export default function VendorDashboard() {
   // ---------------------------------------------------------
   // Stats (your original code)
   // ---------------------------------------------------------
-  const stats = useMemo(() => {
-    const now = new Date();
-    let totalOrders = 0;
-    let ordersToday = 0;
-    let revenueToday = 0;
-    let revenueMonth = 0;
-    let revenueYear = 0;
+   const stats = useMemo(() => {
+  const now = new Date();
+  let totalOrders = 0;
+  let ordersToday = 0;
+  let revenueToday = 0;
+  let revenueMonth = 0;
+  let revenueYear = 0;
 
-    let preparing = 0;
-    let ready = 0;
-    let completed = 0;
+  let preparing = 0;
+  let ready = 0;
+  let completed = 0;
 
-    for (const o of orders) {
-      totalOrders += 1;
-      const created = toDateSafe(o);
+  for (const o of orders) {
+    totalOrders += 1;
+    const created = toDateSafe(o);
+    const amount = Number(o.totalAmount || 0);
+    const paid = (o.paymentStatus || "").toLowerCase() === "paid";
 
-      if (created && isSameDay(created, now)) {
+    if (created) {
+      if (isSameDay(created, now)) {
         ordersToday += 1;
-        if ((o.paymentStatus || "").toLowerCase() === "paid") {
-        revenueToday += Number(o.totalAmount || 0);
-        if (created.getMonth() === now.getMonth() && created.getFullYear() === now.getFullYear()) {
-          revenueMonth += Number(o.totalAmount || 0);
+        if (paid) {
+          revenueToday += amount;
         }
-        if (created.getFullYear() === now.getFullYear()) {
-          revenueYear += Number(o.totalAmount || 0);
-        }
-      }
       }
 
-      const status = getFinalStatus(o);
-      if (status === "preparing") preparing++;
-      else if (status === "ready") ready++;
-      else if (status === "completed") completed++;
+      if (paid) {
+        if (
+          created.getMonth() === now.getMonth() &&
+          created.getFullYear() === now.getFullYear()
+        ) {
+          revenueMonth += amount;
+        }
+
+        if (created.getFullYear() === now.getFullYear()) {
+          revenueYear += amount;
+        }
+      }
     }
 
-    return {
-      totalOrders,
-      ordersToday,
-      revenueToday,
-      revenueMonth,
-      revenueYear,
-      preparing,
-      ready,
-      completed,
-    };
-  }, [orders]);
+    const status = getFinalStatus(o);
+    if (status === "preparing") preparing++;
+    else if (status === "ready") ready++;
+    else if (status === "completed") completed++;
+  }
+
+  return {
+    totalOrders,
+    ordersToday,
+    revenueToday,
+    revenueMonth,
+    revenueYear,
+    preparing,
+    ready,
+    completed,
+  };
+}, [orders]);
 
   // ---------------------------------------------------------
   // Recent orders (your original code)

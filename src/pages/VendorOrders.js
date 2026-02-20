@@ -533,11 +533,27 @@ const tryPlayNewOrderSound = () => {
 
 
   /* ------------------ Filtering ------------------ */
-  const filteredOrders = orders.filter((o) => {
+   const filteredOrders = orders
+  .filter((o) => {
     if (todayOnly && !isToday(o)) return false;
-    if (filter === "All") return true;
-    return ((o.orderStatus || o.paymentStatus) || "").toLowerCase().includes(filter.toLowerCase());
+
+    if (filter !== "All") {
+      const statusMatch = ((o.orderStatus || o.paymentStatus) || "")
+        .toLowerCase()
+        .includes(filter.toLowerCase());
+      if (!statusMatch) return false;
+    }
+
+    return true;
+  })
+  .sort((a, b) => {
+    const da = toDateSafe(a);
+    const db = toDateSafe(b);
+
+    if (da && db) return db - da; // newest first
+    return 0;
   });
+
 
   const filterBtn = (name) => ({
     padding: "8px 14px",
@@ -694,6 +710,106 @@ const tryPlayNewOrderSound = () => {
           <p style={{ margin: "6px 0" }}><b>Name:</b> {o.customerName}</p>
           <p style={{ margin: "6px 0" }}><b>Phone:</b> {o.phone}</p>
           <p style={{ margin: "6px 0" }}><b>Total:</b> ₹{o.totalAmount}</p>
+          {o.orderType && (
+  <p style={{ margin: "6px 0" }}>
+    <b>Order Type:</b> {o.orderType}
+  </p>
+  
+)}
+ {(() => {
+  const d = toDateSafe(o);
+  if (!d) return null;
+
+  const now = new Date();
+  const minutes = Math.floor((now - d) / 60000);
+
+  const dateText = d.toLocaleDateString([], {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+
+  const timeText = d.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  // Completed orders → show only date & time
+  if ((o.orderStatus || "").toLowerCase() === "completed") {
+    return (
+      <div style={{ marginTop: 10, fontSize: 13, color: "#666" }}>
+        📅 {dateText} • 🕒 {timeText}
+      </div>
+    );
+  }
+
+  // Older than 60 mins → show only date & time
+  if (minutes > 60) {
+    return (
+      <div style={{ marginTop: 10, fontSize: 13, color: "#666" }}>
+        📅 {dateText} • 🕒 {timeText}
+      </div>
+    );
+  }
+
+  let status = "On Time";
+  let color = "#28a745";
+
+  if (minutes >= 10 && minutes < 20) {
+    status = "Getting Late";
+    color = "#f39c12";
+  } else if (minutes >= 20) {
+    status = "Late";
+    color = "#e74c3c";
+  }
+
+  return (
+    <div
+      style={{
+        marginTop: 10,
+        padding: "10px 12px",
+        borderRadius: 10,
+        background: "#f9fafb",
+        border: "1px solid #e5e7eb",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+      }}
+    >
+      <div style={{ fontSize: 13, color: "#555" }}>
+        📅 {dateText} • 🕒 {timeText} • {minutes} mins ago
+      </div>
+
+      <div
+        style={{
+          padding: "5px 10px",
+          borderRadius: 20,
+          background: color,
+          color: "white",
+          fontSize: 12,
+          fontWeight: 700,
+        }}
+      >
+        {status}
+      </div>
+    </div>
+  );
+})()}
+
+
+{o.address && (
+  <p style={{ margin: "6px 0" }}>
+    <b>Delivery Address:</b> {o.address}
+  </p>
+)}
+
+{o.tableNumber && (
+  <p style={{ margin: "6px 0" }}>
+    <b>Table Number:</b> {o.tableNumber}
+  </p>
+)}
+
+
 
           <b>Items:</b>
           <ul>

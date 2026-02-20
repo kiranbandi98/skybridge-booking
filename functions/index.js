@@ -237,7 +237,15 @@ exports.razorpayCallbackV2 = onRequest(
         return res.status(404).json({ success: false, error: "ORDER_MAPPING_MISSING" });
       }
 
-      const { shopId, orderId } = mapSnap.data();
+      const { 
+       shopId, 
+        orderId, 
+       items, 
+       totalAmount, 
+       customer, 
+       orderType,
+      tableNumber
+      } = mapSnap.data();
 
       const orderRef = db
         .collection("shops")
@@ -245,14 +253,22 @@ exports.razorpayCallbackV2 = onRequest(
         .collection("orders")
         .doc(orderId);
 
-      await orderRef.set(
+       await orderRef.set(
         {
-          paymentStatus: "Paid",
-          razorpayPaymentId: razorpay_payment_id,
-          paidAt: admin.firestore.FieldValue.serverTimestamp(),
-        },
-        { merge: true }
-      );
+        items: items || [],
+  totalAmount: Number(totalAmount || 0),
+  orderType: orderType || "",
+  customerName: customer?.name || "",
+  phone: customer?.phone || "",
+  address: customer?.address || "",
+  tableNumber: tableNumber || customer?.table || "",
+  paymentStatus: "Paid",
+  razorpayPaymentId: razorpay_payment_id,
+  paidAt: admin.firestore.FieldValue.serverTimestamp(),
+  createdAt: admin.firestore.FieldValue.serverTimestamp(),
+},
+{ merge: true }
+);
 
       console.log("✅ Payment verified & order marked Paid");
       
@@ -297,7 +313,16 @@ exports.createRazorpayOrderV2 = onRequest(
         return res.status(405).json({ error: "Method not allowed" });
       }
 
-      const { amount } = req.body;
+        const {
+        amount,
+        shopId,
+        orderId,
+        items,
+        totalAmount,
+        orderType,
+        customer,
+       tableNumber
+       } = req.body;
 
       if (!amount || isNaN(amount)) {
         return res.status(400).json({ error: "Invalid amount" });
@@ -309,6 +334,16 @@ exports.createRazorpayOrderV2 = onRequest(
         receipt: `rcpt_${Date.now()}`,
         payment_capture: 1,
       });
+       await db.collection("razorpayOrders").doc(order.id).set({
+  shopId,
+  orderId,
+  items: items || [],
+  totalAmount: Number(totalAmount || 0),
+  orderType: orderType || "",
+  customer: customer || {},
+  tableNumber: tableNumber || "",
+  createdAt: admin.firestore.FieldValue.serverTimestamp(),
+});
       // ❌ ORDER CREATION BEFORE PAYMENT REMOVED (created after payment success)
 return res.status(200).json({
         orderId: order.id,
