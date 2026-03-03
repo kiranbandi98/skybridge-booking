@@ -206,13 +206,198 @@ function speakNow(text) {
     console.warn("TTS failed", e);
   }
 }
+ // ================= COMPONENT: COMPLETED ORDER ROW =================
+const CompletedOrderRow = React.memo(function CompletedOrderRow({ o }) {
+  const d = toDateSafe(o);
+  
+  const dateText = d
+    ? d.toLocaleDateString([], {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      })
+    : "";
 
+  const timeText = d
+    ? d.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "";
+
+  return (
+    <div
+      style={{
+        padding: "12px 16px",
+        marginBottom: 8,
+        background: "#f8fafc",
+        borderRadius: 8,
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        border: "1px solid #e5e7eb",
+      }}
+    >
+      <div>
+        <div style={{ fontWeight: 700 }}>
+          #{o.id.slice(0, 6)} — {o.customerName}
+        </div>
+        <div style={{ fontSize: 13, color: "#666" }}>
+          ₹{o.totalAmount} • {dateText} • {timeText}
+        </div>
+      </div>
+
+      <div
+        style={{
+          padding: "6px 12px",
+          borderRadius: 20,
+          fontWeight: 700,
+          fontSize: 12,
+          background: "#1e88e5",
+          color: "white",
+        }}
+      >
+        Completed
+      </div>
+         </div>
+  );
+});
+
+// ================= COMPONENT: ACTIVE ORDER CARD =================
+const ActiveOrderCard = React.memo(function ActiveOrderCard({ o, updateStatus }) {
+  const d = toDateSafe(o);
+  // 🔥 URGENCY CALCULATION START
+  const now = new Date();
+  let minutes = 0;
+
+  if (d) {
+    minutes = Math.floor((now - d) / 60000);
+  }
+
+  let urgencyLabel = null;
+  let urgencyStyle = {};
+
+  if (minutes >= 0 && minutes < 10) {
+    urgencyLabel = "On Time";
+    urgencyStyle = { color: "#16a34a", fontWeight: 700 };
+  } else if (minutes >= 10 && minutes < 60) {
+    urgencyLabel = "Late";
+    urgencyStyle = { color: "#dc2626", fontWeight: 700 };
+  } else {
+    urgencyLabel = null;
+  }
+  // 🔥 URGENCY CALCULATION END
+  const dateText = d
+    ? d.toLocaleDateString([], {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      })
+    : "";
+
+  const timeText = d
+    ? d.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "";
+
+  return (
+    <div
+      style={{
+        padding: 16,
+        marginBottom: 14,
+        background: "white",
+        borderRadius: 10,
+        boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+        borderLeft:
+          o.orderType === "dinein"
+            ? "6px solid #0366d6"
+            : o.orderType === "delivery"
+            ? "6px solid #16a34a"
+            : o.orderType === "pickup"
+            ? "6px solid #6b7280"
+            : "6px solid transparent",
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between" }}>
+        <h3 style={{ margin: 0 }}>Order #{o.id}</h3>
+         {(() => {
+  const displayStatus =
+    o.orderStatus && o.orderStatus !== ""
+      ? o.orderStatus
+      : o.paymentStatus;
+
+  return (
+    <span
+      style={{
+        padding: "6px 12px",
+        borderRadius: 8,
+        fontWeight: 700,
+        ...getStatusStyle(displayStatus),
+      }}
+    >
+      {displayStatus}
+    </span>
+  );
+})()}
+      </div>
+
+      <p><b>Name:</b> {o.customerName}</p>
+      <p><b>Phone:</b> {o.phone}</p>
+      <p><b>Total:</b> ₹{o.totalAmount}</p>
+      <p style={{ fontSize: 13, color: "#666" }}>
+        📅 {dateText} • 🕒 {timeText}
+      </p>
+      {urgencyLabel && (
+  <div style={{ marginTop: 4, ...urgencyStyle }}>
+    {urgencyLabel}
+  </div>
+)}
+
+      <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
+        {["Pending", "Preparing", "Ready", "Completed"].map((status) => {
+          const current = (o.orderStatus || "pending").toLowerCase();
+          const s = status.toLowerCase();
+ 
+        return (
+  <button
+    key={status}
+    onClick={() => updateStatus(o.id, status)}
+    style={{
+      padding: "6px 14px",
+      borderRadius: 8,
+      border: "none",
+      cursor: "pointer",
+      fontWeight: 700,
+      background:
+        s === "pending"
+          ? "#9e9e9e"
+          : s === "preparing"
+          ? "#ff9800"
+          : s === "ready"
+          ? "#4caf50"
+          : "#1e88e5",
+      color: "white",
+      opacity: 1,
+    }}
+  >
+    {status}
+  </button>
+);
+        })}
+      </div>
+        </div>
+  );
+});
 
 export default function VendorOrders() {
   const { shopId } = useParams();
   const [orders, setOrders] = useState([]);
   const [filter, setFilter] = useState("All");
   const [todayOnly, setTodayOnly] = useState(false);
+  const [viewMode, setViewMode] = useState("ACTIVE"); 
+// ACTIVE or COMPLETED
   const [isRinging, setIsRinging] = useState(false);
 
   
@@ -347,16 +532,15 @@ const tryPlayNewOrderSound = () => {
     setIsRinging(false);
   };
 
-  async function updateStatus(orderId, newStatus) {
-    try {
-      await updateDoc(doc(db, "shops", shopId, "orders", orderId), {
-        orderStatus: newStatus,
-      });
-    } catch (err) {
-      console.error("Update status failed", err);
-    }
+  const updateStatus = React.useCallback(async (orderId, newStatus) => {
+  try {
+    await updateDoc(doc(db, "shops", shopId, "orders", orderId), {
+      orderStatus: newStatus,
+    });
+  } catch (err) {
+    console.error("Update status failed", err);
   }
-
+}, [shopId]);
   /* ------------------ Toast helpers ------------------ */
 
   function showNewOrderToast(orderData) {
@@ -404,10 +588,7 @@ const tryPlayNewOrderSound = () => {
 
   /* ------------------ Firestore real-time listener ------------------ */
   useEffect(() => {
-    const colRef = query(
-      collection(db, "shops", shopId, "orders"),
-      where("paymentStatus", "==", "Paid")
-    );
+     const colRef = collection(db, "shops", shopId, "orders");
 
     const unsubscribe = onSnapshot(colRef, (snapshot) => {
       let mapped = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
@@ -505,7 +686,7 @@ const tryPlayNewOrderSound = () => {
       if (statusToastTimerRef.current) clearTimeout(statusToastTimerRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [audioUnlocked]);
+ }, [shopId, audioUnlocked]);
 
 
   // 🔁 After audio unlock, announce any already-paid order not spoken yet
@@ -530,29 +711,66 @@ const tryPlayNewOrderSound = () => {
       speakNow(text);
     }
   }, [audioUnlocked, orders]);
+  /* ------------------ Operational Metrics ------------------ */
 
+ const activeOrders = orders.filter((o) => {
+  const status = (o.orderStatus || o.paymentStatus || "pending").toLowerCase();
+  return status !== "completed";
+});
 
+const preparingCount = activeOrders.filter((o) =>
+  (o.orderStatus || "").toLowerCase().includes("prepar")
+).length;
+
+const readyCount = activeOrders.filter((o) =>
+  (o.orderStatus || "").toLowerCase().includes("ready")
+).length;
+
+const pendingCount = activeOrders.filter((o) =>
+  (o.orderStatus || "").toLowerCase().includes("pending")
+).length;
+
+const lateCount = activeOrders.filter((o) => {
+  const d = toDateSafe(o);
+  if (!d) return false;
+  const minutes = Math.floor((new Date() - d) / 60000);
+  return minutes >= 10;
+}).length;
+
+const todayRevenue = orders
+  .filter((o) => isToday(o))
+  .reduce((sum, o) => sum + (o.totalAmount || 0), 0);
   /* ------------------ Filtering ------------------ */
-   const filteredOrders = orders
-  .filter((o) => {
-    if (todayOnly && !isToday(o)) return false;
+ const filteredOrders = React.useMemo(() => {
+  return orders
+    .filter((o) => {
+       const status = (o.orderStatus || o.paymentStatus || "pending").toLowerCase();
 
-    if (filter !== "All") {
-      const statusMatch = ((o.orderStatus || o.paymentStatus) || "")
-        .toLowerCase()
-        .includes(filter.toLowerCase());
-      if (!statusMatch) return false;
-    }
+      // View mode separation
+      if (viewMode === "ACTIVE" && status === "completed") return false;
+      if (viewMode === "COMPLETED" && status !== "completed") return false;
 
-    return true;
-  })
-  .sort((a, b) => {
-    const da = toDateSafe(a);
-    const db = toDateSafe(b);
+      // Today filter
+      if (todayOnly && !isToday(o)) return false;
 
-    if (da && db) return db - da; // newest first
-    return 0;
-  });
+      // Status filter buttons
+      if (filter !== "All") {
+        const statusMatch = status.includes(filter.toLowerCase());
+        if (!statusMatch) return false;
+      }
+
+      return true;
+    })
+    .sort((a, b) => {
+      const da = toDateSafe(a);
+      const db = toDateSafe(b);
+      if (da && db) return db - da;
+      return 0;
+    });
+}, [orders, viewMode, todayOnly, filter]);
+
+
+  
 
 
   const filterBtn = (name) => ({
@@ -592,10 +810,96 @@ const tryPlayNewOrderSound = () => {
 
   return (
     <div style={{ padding: 20 }}>
+       <style>
+      {`
+        @keyframes pulseAlert {
+          0% { transform: scale(1); }
+          50% { transform: scale(1.05); }
+          100% { transform: scale(1); }
+        }
+      `}
+    </style>
       {/* ⭐ INSERTED NAVBAR HERE */}
       <Navbar shopId={shopId} />
 
       <h2>Vendor Orders Dashboard</h2>
+       <div
+  style={{
+    display: "flex",
+    gap: 20,
+    flexWrap: "wrap",
+    marginBottom: 20,
+    padding: 16,
+    background:
+      lateCount > 0
+        ? "#ffe5e5"
+        : preparingCount > 5
+        ? "#fff4e5"
+        : "#f8fafc",
+    borderRadius: 10,
+    boxShadow: "0 2px 6px rgba(0,0,0,0.05)",
+    fontWeight: 700,
+    transition: "all 0.3s ease",
+  }}
+>
+  <div
+    onClick={() => {
+      setViewMode("ACTIVE");
+      setFilter("All");
+    }}
+    style={{ cursor: "pointer" }}
+  >
+    📦 Active: {activeOrders.length}
+  </div>
+
+  <div
+    onClick={() => {
+      setViewMode("ACTIVE");
+      setFilter("prepar");
+    }}
+    style={{
+      cursor: "pointer",
+      color: preparingCount > 5 ? "#d97706" : "inherit",
+    }}
+  >
+    ⏳ Preparing: {preparingCount}
+  </div>
+
+  <div
+    onClick={() => {
+      setViewMode("ACTIVE");
+      setFilter("ready");
+    }}
+    style={{ cursor: "pointer" }}
+  >
+    ✅ Ready: {readyCount}
+  </div>
+
+  <div
+    onClick={() => {
+      setViewMode("ACTIVE");
+      setFilter("All");
+      setTodayOnly(false);
+    }}
+    style={{
+      cursor: "pointer",
+      color: lateCount > 0 ? "#dc2626" : "inherit",
+      fontWeight: lateCount > 0 ? 800 : 700,
+      animation: lateCount > 0 ? "pulseAlert 1.2s infinite" : "none",
+    }}
+  >
+    ⚠️ Late: {lateCount}
+  </div>
+
+  <div
+    onClick={() => {
+      setTodayOnly(true);
+    }}
+    style={{ cursor: "pointer" }}
+  >
+    💰 Today Revenue: ₹{todayRevenue}
+  </div>
+</div>
 
       {/* Enable sounds button (visible until unlocked) */}
       {!audioUnlocked && (
@@ -639,24 +943,67 @@ const tryPlayNewOrderSound = () => {
           </button>
         </div>
       )}
+      <div style={{ marginBottom: 14 }}>
+  <button
+    onClick={() => setViewMode("ACTIVE")}
+    style={{
+      padding: "8px 16px",
+      borderRadius: 8,
+      border: "none",
+      marginRight: 8,
+      fontWeight: 700,
+      cursor: "pointer",
+      background: viewMode === "ACTIVE" ? "#111" : "#e3e3e3",
+      color: viewMode === "ACTIVE" ? "white" : "#333",
+    }}
+  >
+    Active Orders
+  </button>
 
-      <div style={{ marginBottom: 10 }}>
-        <button style={filterBtn("All")} onClick={() => setFilter("All")}>
-          All
-        </button>
-        <button style={filterBtn("prepar")} onClick={() => setFilter("prepar")}>
-          Preparing
-        </button>
-        <button style={filterBtn("ready")} onClick={() => setFilter("ready")}>
-          Ready
-        </button>
-        <button style={filterBtn("pending")} onClick={() => setFilter("pending")}>
-          Pending
-        </button>
-        <button style={filterBtn("complete")} onClick={() => setFilter("complete")}>
-          Completed
-        </button>
-      </div>
+  <button
+    onClick={() => setViewMode("COMPLETED")}
+    style={{
+      padding: "8px 16px",
+      borderRadius: 8,
+      border: "none",
+      fontWeight: 700,
+      cursor: "pointer",
+      background: viewMode === "COMPLETED" ? "#111" : "#e3e3e3",
+      color: viewMode === "COMPLETED" ? "white" : "#333",
+    }}
+  >
+    Completed Orders
+  </button>
+</div>
+       <div style={{ marginBottom: 10 }}>
+
+  {viewMode === "ACTIVE" && (
+    <>
+      <button style={filterBtn("All")} onClick={() => setFilter("All")}>
+        All
+      </button>
+
+      <button style={filterBtn("prepar")} onClick={() => setFilter("prepar")}>
+        Preparing
+      </button>
+
+      <button style={filterBtn("ready")} onClick={() => setFilter("ready")}>
+        Ready
+      </button>
+
+      <button style={filterBtn("pending")} onClick={() => setFilter("pending")}>
+        Pending
+      </button>
+    </>
+  )}
+
+  {viewMode === "COMPLETED" && (
+    <button style={filterBtn("complete")} onClick={() => setFilter("complete")}>
+      Completed
+    </button>
+  )}
+
+</div>
 
       <div style={{ marginBottom: 16 }}>
         <button
@@ -678,202 +1025,21 @@ const tryPlayNewOrderSound = () => {
       {filteredOrders.length === 0 && (
         <p style={{ color: "#777" }}>No orders in this category.</p>
       )}
+       
+       {filteredOrders.map((o) => {
+   const isCompleted =
+  (o.orderStatus || o.paymentStatus || "").toLowerCase() === "completed";
 
-      {filteredOrders.map((o) => (
-        <div
-          key={o.id}
-          onClick={(e) => e.stopPropagation()}
-          style={{
-            padding: 16,
-            marginBottom: 14,
-            background: "white",
-            borderRadius: 10,
-            boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-            cursor: "pointer",
-            transition: "transform 120ms",
-          }}
-        >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <h3 style={{ margin: 0 }}>Order #{o.id}</h3>
-            <span
-              style={{
-                padding: "6px 12px",
-                borderRadius: 8,
-                fontWeight: 700,
-                ...getStatusStyle(o.orderStatus || o.paymentStatus),
-              }}
-            >
-              {o.orderStatus || o.paymentStatus}
-            </span>
-          </div>
-
-          <p style={{ margin: "6px 0" }}><b>Name:</b> {o.customerName}</p>
-          <p style={{ margin: "6px 0" }}><b>Phone:</b> {o.phone}</p>
-          <p style={{ margin: "6px 0" }}><b>Total:</b> ₹{o.totalAmount}</p>
-          {o.orderType && (
-  <p style={{ margin: "6px 0" }}>
-    <b>Order Type:</b> {o.orderType}
-  </p>
-  
-)}
- {(() => {
-  const d = toDateSafe(o);
-  if (!d) return null;
-
-  const now = new Date();
-  const minutes = Math.floor((now - d) / 60000);
-
-  const dateText = d.toLocaleDateString([], {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-
-  const timeText = d.toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-
-  // Completed orders → show only date & time
-  if ((o.orderStatus || "").toLowerCase() === "completed") {
-    return (
-      <div style={{ marginTop: 10, fontSize: 13, color: "#666" }}>
-        📅 {dateText} • 🕒 {timeText}
-      </div>
-    );
-  }
-
-  // Older than 60 mins → show only date & time
-  if (minutes > 60) {
-    return (
-      <div style={{ marginTop: 10, fontSize: 13, color: "#666" }}>
-        📅 {dateText} • 🕒 {timeText}
-      </div>
-    );
-  }
-
-  let status = "On Time";
-  let color = "#28a745";
-
-  if (minutes >= 10 && minutes < 20) {
-    status = "Getting Late";
-    color = "#f39c12";
-  } else if (minutes >= 20) {
-    status = "Late";
-    color = "#e74c3c";
-  }
-
-  return (
-    <div
-      style={{
-        marginTop: 10,
-        padding: "10px 12px",
-        borderRadius: 10,
-        background: "#f9fafb",
-        border: "1px solid #e5e7eb",
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-      }}
-    >
-      <div style={{ fontSize: 13, color: "#555" }}>
-        📅 {dateText} • 🕒 {timeText} • {minutes} mins ago
-      </div>
-
-      <div
-        style={{
-          padding: "5px 10px",
-          borderRadius: 20,
-          background: color,
-          color: "white",
-          fontSize: 12,
-          fontWeight: 700,
-        }}
-      >
-        {status}
-      </div>
-    </div>
+  return isCompleted ? (
+    <CompletedOrderRow key={o.id} o={o} />
+  ) : (
+    <ActiveOrderCard
+      key={o.id}
+      o={o}
+      updateStatus={updateStatus}
+    />
   );
-})()}
-
-
-{o.address && (
-  <p style={{ margin: "6px 0" }}>
-    <b>Delivery Address:</b> {o.address}
-  </p>
-)}
-
-{o.tableNumber && (
-  <p style={{ margin: "6px 0" }}>
-    <b>Table Number:</b> {o.tableNumber}
-  </p>
-)}
-
-
-
-          <b>Items:</b>
-          <ul>
-            {o.items?.map((item, idx) => (
-              <li key={idx}>
-                {item.name} × {item.qty} — ₹{item.price * item.qty}
-              </li>
-            ))}
-          </ul>
-
-          <div style={{ marginTop: 10 }}>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                updateStatus(o.id, "Preparing");
-              }}
-              style={{
-                background: "#ff9800",
-                color: "white",
-                padding: "6px 12px",
-                borderRadius: 6,
-                marginRight: 8,
-                border: "none",
-              }}
-            >
-              Preparing
-            </button>
-
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                updateStatus(o.id, "Ready");
-              }}
-              style={{
-                background: "#4caf50",
-                color: "white",
-                padding: "6px 12px",
-                borderRadius: 6,
-                marginRight: 8,
-                border: "none",
-              }}
-            >
-              Ready
-            </button>
-
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                updateStatus(o.id, "Completed");
-              }}
-              style={{
-                background: "#1e88e5",
-                color: "white",
-                padding: "6px 12px",
-                borderRadius: 6,
-                border: "none",
-              }}
-            >
-              Completed
-            </button>
-          </div>
-        </div>
-      ))}
-
+})}
       {/* New Order Toast (top-right) */}
       {toast && (
         <div

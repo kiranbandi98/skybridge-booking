@@ -13,7 +13,7 @@ export default function CartPage() {
   const { cart, updateQty, removeItem, cartTotal, clearCart } = useCart();
   const navigate = useNavigate();
   const { shopId } = useParams();
-
+  const location = window.location;
   const hasOutOfStockInCart = cart.some(item => item.inStock === false);
 
   const [form, setForm] = useState({
@@ -23,7 +23,24 @@ export default function CartPage() {
     address: "",
     table: "",
   });
+  // 👇 ADD THIS RIGHT HERE
+ useEffect(() => {
+  const hash = window.location.hash;
+  const parts = hash.split("?");
 
+  if (parts.length < 2) return;
+
+  const params = new URLSearchParams(parts[1]);
+  const tableFromUrl = params.get("table");
+
+  if (tableFromUrl) {
+    setForm((prev) => ({
+      ...prev,
+      orderType: "dinein",
+      table: tableFromUrl,
+    }));
+  }
+}, []);
   const [loading, setLoading] = useState(false);
   const [razorpayReady, setRazorpayReady] = useState(false);
 
@@ -321,14 +338,24 @@ export default function CartPage() {
 
             {form.orderType === "dinein" && (
               <input
-                type="text"
-                placeholder="Table Number"
-                value={form.table}
-                onChange={(e) =>
-                  setForm({ ...form, table: e.target.value })
-                }
-                style={{ width: "100%", padding: 8, marginBottom: 10 }}
-              />
+             type="text"
+           placeholder="Table Number"
+           value={form.table}
+            onChange={(e) =>
+    setForm({ ...form, table: e.target.value })
+  }
+  disabled={!!form.table && window.location.hash.includes("table=")}
+  style={{
+    background:
+      !!form.table && window.location.hash.includes("table=")
+        ? "#f3f4f6"
+        : "white",
+    cursor:
+      !!form.table && window.location.hash.includes("table=")
+        ? "not-allowed"
+        : "text",
+  }}
+/>
             )}
           </div>
 

@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { QRCodeCanvas } from "qrcode.react"; // ✅ QR CODE
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { db } from "../utils/firebase";
-import { collection, onSnapshot, doc, getDoc, updateDoc } from "firebase/firestore";
+import { collection, onSnapshot, doc, getDoc, updateDoc, setDoc, getDocs } from "firebase/firestore";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import imageCompression from "browser-image-compression"; // ✅ NEW: banner compression
 
@@ -67,6 +67,7 @@ export default function VendorDashboard() {
   const shopUrl = `${window.location.origin}/#/shop/${shopId}`;
 
   const [orders, setOrders] = useState([]);
+  const [tables, setTables] = useState([]);
   const [shopBanner, setShopBanner] = useState("");
   const [shop, setShop] = useState(null);
   const [bannerUploading, setBannerUploading] = useState(false);
@@ -193,6 +194,24 @@ export default function VendorDashboard() {
 
     return () => unsubscribe();
   }, [shopId]);
+   
+  // ---------------------------------------------------------
+// 🪑 Load Tables
+// ---------------------------------------------------------
+useEffect(() => {
+  const tablesRef = collection(db, "shops", shopId, "tables");
+
+  const unsubscribe = onSnapshot(tablesRef, (snapshot) => {
+    const docs = snapshot.docs.map((d) => ({
+      id: d.id,
+      ...d.data(),
+    }));
+    setTables(docs);
+  });
+
+  return () => unsubscribe();
+}, [shopId]);
+
 
   // ---------------------------------------------------------
   // Stats (your original code)
@@ -274,7 +293,7 @@ export default function VendorDashboard() {
   function clearNewOrders() {
     setNewOrdersCount(0);
   }
-
+ 
   // ---------------------------------------------------------
   // ⭐ TOP NAVIGATION BAR (Style 1 — Added safely)
   // ---------------------------------------------------------
@@ -291,7 +310,33 @@ export default function VendorDashboard() {
     link.click();
     document.body.removeChild(link);
   }
+ // ---------------------------------------------------------
+// 🪑 Generate Tables (T1–T20)
+// ---------------------------------------------------------
+async function generateTables() {
+  try {
+    const tablesRef = collection(db, "shops", shopId, "tables");
 
+    const existing = await getDocs(tablesRef);
+    const existingIds = new Set(existing.docs.map(d => d.id));
+
+    for (let i = 1; i <= 20; i++) {
+      const tableId = `T${i}`;
+      if (!existingIds.has(tableId)) {
+        await setDoc(doc(db, "shops", shopId, "tables", tableId), {
+          tableNumber: tableId,
+          active: true,
+          createdAt: new Date()
+        });
+      }
+    }
+
+    alert("Tables generated successfully!");
+    } catch (error) {
+    console.error("Table generation failed:", error);
+    alert("Error generating tables");
+    }
+   }
   const Navbar = () => (
      
     <div
@@ -443,22 +488,37 @@ export default function VendorDashboard() {
          level="H"
           includeMargin
           />
-        <div style={{ marginTop: 12 }}>
-          <button
-            onClick={downloadQRCode}
-            style={{
-              background: "#0366a6",
-              color: "white",
-              border: "none",
-              padding: "8px 14px",
-              borderRadius: 6,
-              cursor: "pointer",
-              fontWeight: 600,
-            }}
-          >
-            Download QR Code
-          </button>
-        </div>
+         <div style={{ marginTop: 12, display: "flex", gap: 10 }}>
+  <button
+    onClick={downloadQRCode}
+    style={{
+      background: "#0366a6",
+      color: "white",
+      border: "none",
+      padding: "8px 14px",
+      borderRadius: 6,
+      cursor: "pointer",
+      fontWeight: 600,
+    }}
+  >
+    Download QR Code
+  </button>
+
+  <button
+    onClick={generateTables}
+    style={{
+      background: "#2e7d32",
+      color: "white",
+      border: "none",
+      padding: "8px 14px",
+      borderRadius: 6,
+      cursor: "pointer",
+      fontWeight: 600,
+    }}
+  >
+    Generate 20 Tables
+  </button>
+</div>
 
         <div style={{ marginTop: 6, fontSize: 12, color: "#777" }}>
           Linked URL: {shopUrl}
@@ -529,7 +589,67 @@ export default function VendorDashboard() {
 
 </div>
 
+      {/* -------------------------------------------------- */}
+{/* 🪑 TABLE QR SECTION */}
+{/* -------------------------------------------------- */}
+<div
+  style={{
+    marginBottom: 24,
+    padding: 16,
+    background: "#fff",
+    borderRadius: 10,
+    boxShadow: "0 4px 14px rgba(0,0,0,0.06)",
+  }}
+>
+  <div style={{ fontWeight: 700, marginBottom: 10 }}>
+    Table QR Codes
+  </div>
 
+  {tables.length === 0 && (
+    <div style={{ color: "#777" }}>
+      No tables found. Click "Generate 20 Tables".
+    </div>
+  )}
+
+  <div
+    style={{
+      display: "grid",
+      gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
+      gap: 16,
+    }}
+  >
+    {tables.map((table) => {
+      const tableUrl = `${window.location.origin}/#/shop/${shopId}?table=${table.id}`;
+
+      return (
+        <div
+          key={table.id}
+          style={{
+            border: "1px solid #eee",
+            borderRadius: 8,
+            padding: 12,
+            textAlign: "center",
+          }}
+        >
+          <div style={{ fontWeight: 600, marginBottom: 6 }}>
+            {table.id}
+          </div>
+
+          <QRCodeCanvas
+            value={tableUrl}
+            size={140}
+            level="H"
+            includeMargin
+          />
+
+          <div style={{ fontSize: 12, marginTop: 6, color: "#666" }}>
+            {tableUrl}
+          </div>
+        </div>
+      );
+    })}
+  </div>
+</div>
       {/* Your original header (unchanged) */}
       <header
         style={{
@@ -682,10 +802,7 @@ export default function VendorDashboard() {
           marginTop: 26,
         }}
       >
-        <div>
-          {/* Live Orders section remains untouched */}
-          {/* ... */}
-        </div>
+        
 
         <aside>
           {/* Recent Orders section remains untouched */}
@@ -705,10 +822,10 @@ const cardStyle = {
   borderRadius: 10,
   boxShadow: "0 6px 18px rgba(0,0,0,0.04)",
 };
-
 const navLink = {
   color: "white",
   textDecoration: "none",
   fontWeight: 600,
   padding: "6px 10px",
 };
+  

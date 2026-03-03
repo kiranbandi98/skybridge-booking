@@ -1,21 +1,28 @@
-import React, { useEffect, useState, useRef } from "react";
+import StickyBar from "../components/StickyBar";
+import FloatingCart from "../components/FloatingCart";
+import MenuCard from "../components/MenuCard";
+import React, { useEffect, useState, useRef, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import { db } from "../utils/firebase";
 import { collection, onSnapshot, doc, getDoc } from "firebase/firestore";
 import { useCart } from "../context/CartContext";
 
+
 export default function ShopMenuPage() {
   const { shopId } = useParams();
-  const { addToCart, cart } = useCart();
+   const { addToCart, cart } = useCart();
+
+const cartTotal = cart.reduce(
+  (sum, item) => sum + item.price * item.quantity,
+  0
+);
 
   const [menu, setMenu] = useState([]);
-  // ✅ NEW: Detect which categories actually exist
-  const availableCategories = {
-    veg: menu.some(item => (item.category || 'veg') === 'veg'),
-    nonveg: menu.some(item => item.category === 'nonveg'),
-    drinks: menu.some(item => item.category === 'drinks'),
-  };
-
+   const availableCategories = useMemo(() => ({
+  veg: menu.some(item => (item.category || "veg") === "veg"),
+  nonveg: menu.some(item => item.category === "nonveg"),
+  drinks: menu.some(item => item.category === "drinks"),
+}), [menu]);
   const [selectedCategory, setSelectedCategory] = useState('all'); // ✅ NEW
   const [shopActive, setShopActive] = useState(true);
   const [addedId, setAddedId] = useState(null);
@@ -90,7 +97,8 @@ return () => unsubscribe();
   }, [shopId]);
 
     // ✅ NEW: Category + Search filter logic
-  const filteredMenu = menu.filter((item) => {
+  const filteredMenu = useMemo(() => {
+  return menu.filter((item) => {
     const categoryMatch =
       selectedCategory === "all" ||
       (item.category || "veg") === selectedCategory;
@@ -98,19 +106,23 @@ return () => unsubscribe();
     const searchMatch =
       searchQuery.trim() === "" ||
       item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (item.category || "veg").toLowerCase().includes(searchQuery.toLowerCase());
+      (item.category || "veg")
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase());
 
     return categoryMatch && searchMatch;
   });
-
+}, [menu, selectedCategory, searchQuery]);
   
   // ✅ NEW: Group menu items by category (customer view)
-  const groupedMenu = filteredMenu.reduce((acc, item) => {
+  const groupedMenu = useMemo(() => {
+  return filteredMenu.reduce((acc, item) => {
     const cat = item.category || "veg";
     if (!acc[cat]) acc[cat] = [];
     acc[cat].push(item);
     return acc;
   }, {});
+}, [filteredMenu]);
 
   
   /* =====================================================
@@ -129,20 +141,7 @@ return () => unsubscribe();
   }, [menu, groupedMenu, selectedCategory]);
 
 
-  // 🔍 NEW: Highlight matched search text
-  function highlightText(text, query) {
-    if (!query) return text;
-
-    const parts = text.split(new RegExp(`(${query})`, "gi"));
-    return parts.map((part, i) =>
-      part.toLowerCase() === query.toLowerCase() ? (
-        <strong key={i}>{part}</strong>
-      ) : (
-        part
-      )
-    );
-  }
-
+ 
   
   // ✅ ADD TO CART HANDLER (FIXED SCOPE)
   function handleAdd(item) {
@@ -150,259 +149,111 @@ return () => unsubscribe();
     setAddedId(item.id);
     setTimeout(() => setAddedId(null), 800);
   }
-
-// ⏳ Wait for Firestore
-  if (loading) {
-    return <p style={{ padding: 20 }}>Loading shop…</p>;
-  }
+    
+   
 
   // ✅ NEW: CHECK IF ANY ITEM IS IN STOCK
   const hasAnyInStock = menu.some((item) => item.inStock !== false);
-
+  const hash = window.location.hash;
+  const search = hash.includes("?") ? "?" + hash.split("?")[1] : "";
+  const totalItems = cart.reduce(
+  (sum, item) => sum + item.quantity,
+  0
+  );
   return (
-    <div style={{ padding: 20, maxWidth: 900, margin: "0 auto" }}>
+     <div style={{ padding: "20px 20px 140px", maxWidth: 900, margin: "0 auto" }}>
       <h2>Menu</h2>
+      {loading && (
+  <div
+    style={{
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: 16,
+      marginTop: 20,
+    }}
+  >
+    {Array.from({ length: 6 }).map((_, i) => (
+      <div
+        key={i}
+        style={{
+          height: 240,
+          borderRadius: 16,
+          background: "linear-gradient(90deg, #eee 25%, #ddd 37%, #eee 63%)",
+          backgroundSize: "400% 100%",
+          animation: "shimmer 1.2s ease-in-out infinite",
+        }}
+      />
+    ))}
+  </div>
+)}
+    
+       {!loading && (
+  <>
+    {!shopActive && (
+      <p style={{ color: "red", fontWeight: 600 }}>
+        🚫 This shop is temporarily unavailable
+      </p>
+    )}
 
-      {!shopActive && (
-        <p style={{ color: "red", fontWeight: 600 }}>
-          🚫 This shop is temporarily unavailable
-        </p>
-      )}
-
-      <p>Select your items</p>
+    <p>Select your items</p>
+  
 
       
-      {/* 🧲 STICKY SEARCH + CATEGORY BAR */}
-      <div
-        style={{
-          position: "sticky",
-          top: 0,
-          zIndex: 20,
-          background: "#fff",
-          paddingTop: 10,
-          boxShadow: "0 2px 6px rgba(0,0,0,0.06)",
-        }}
-      >
-
-      {/* 🔍 SEARCH MENU ITEMS */}
-      <div style={{ position: "relative", margin: "12px 0 20px" }}>
-        <span
-          style={{
-            position: "absolute",
-            left: 12,
-            top: "50%",
-            transform: "translateY(-50%)",
-            color: "#6c757d",
-            fontSize: 16,
-          }}
-        >
-          🔍
-        </span>
-
-        <input
-          type="text"
-          placeholder="Search menu items..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          style={{
-            width: "100%",
-            padding: "10px 36px",
-            borderRadius: 8,
-            border: "1px solid #ccc",
-            fontSize: 14,
-          }}
-        />
-
-        {searchQuery && (
-          <button
-            onClick={() => setSearchQuery("")}
-            style={{
-              position: "absolute",
-              right: 10,
-              top: "50%",
-              transform: "translateY(-50%)",
-              background: "transparent",
-              border: "none",
-              fontSize: 16,
-              cursor: "pointer",
-              color: "#999",
-            }}
-            aria-label="Clear search"
-          >
-            ❌
-          </button>
-        )}
-      </div>
-
-
-      {/* ✅ NEW: Category Filter */}
-
-      </div>
-      {/* 🧲 END STICKY BAR */}
-
-      <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
-        {["all", "veg", "nonveg", "drinks"]
-        .filter(cat => cat === "all" || availableCategories[cat])
-        .map((cat) => (
-          <button
-            key={cat}
-            onClick={() => {
-              setSelectedCategory(cat);
-              if (cat !== "all") scrollToCategory(cat);
-            }}
-            style={{
-              padding: "6px 14px",
-              borderRadius: 20,
-              border: "1px solid #ccc",
-              background:
-                selectedCategory === cat ? "#0d6efd" : "#f8f9fa",
-              color:
-                selectedCategory === cat ? "white" : "#333",
-              cursor: "pointer",
-              fontWeight: 600,
-            }}
-          >
-            {cat === "all"
-              ? "All"
-              : cat === "veg"
-              ? "Veg"
-              : cat === "nonveg"
-              ? "Non-Veg"
-              : "Drinks"}
-          </button>
-        ))}
-      </div>
-
-
-      <div style={{ marginBottom: 20 }}>
-        <Link to={`/cart/${shopId}`}>
-          <button
-            disabled={!shopActive || !hasAnyInStock}
-            style={{
-              background: "#0d6efd",
-              color: "white",
-              padding: "10px 16px",
-              borderRadius: 8,
-              border: "none",
-              cursor:
-                shopActive && hasAnyInStock ? "pointer" : "not-allowed",
-              fontWeight: 600,
-            }}
-          >
-            {!shopActive
-              ? "Shop Unavailable"
-              : !hasAnyInStock
-              ? "All Items Out of Stock"
-              : `🛒 View Cart (${cart.length})`}
-          </button>
-        </Link>
-
-        {!hasAnyInStock && (
-          <p style={{ color: "#dc3545", marginTop: 10, fontWeight: 600 }}>
-            All items are currently out of stock
-          </p>
-        )}
-      </div>
-
-      {menu.length === 0 && <p>No menu items added yet.</p>}
+       <StickyBar
+  searchQuery={searchQuery}
+  setSearchQuery={setSearchQuery}
+  selectedCategory={selectedCategory}
+  setSelectedCategory={setSelectedCategory}
+  availableCategories={availableCategories}
+  scrollToCategory={scrollToCategory}
+          />
+        {menu.length === 0 && <p>No menu items added yet.</p>}
 
       {menu.length > 0 && filteredMenu.length === 0 && (
         <p style={{ marginTop: 20, fontWeight: 600 }}>
           🔍 No items found
         </p>
       )}
-
-
       {Object.entries(groupedMenu).map(([category, items]) => (
-        <div key={category} ref={categoryRefs[category]}>
-          <h3 style={{ marginTop: 20, textTransform: "capitalize" }}>
-            {category === "veg"
-              ? "🥦 Veg"
-              : category === "nonveg"
-              ? "🍗 Non-Veg"
-              : category === "drinks"
-              ? "🥤 Drinks"
-              : category}
-          </h3>
+  <div key={category} ref={categoryRefs[category]}>
+    <h3 style={{ marginTop: 20 }}>
+      {category === "veg"
+        ? "🥦 Veg"
+        : category === "nonveg"
+        ? "🍗 Non-Veg"
+        : category === "drinks"
+        ? "🥤 Drinks"
+        : category}
+    </h3>
 
-          {items.map((item) => (
-
-        <div
-          key={item.id}
-          style={{
-            padding: 15,
-            marginBottom: 12,
-            background: "#fff",
-            borderRadius: 10,
-            boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-            display: "flex",
-            gap: 20,
-            alignItems: "center",
-          }}
-        >
-          <img
-            src={item.img || "https://via.placeholder.com/80"}
-            alt={item.name}
-            style={{
-              width: 80,
-              height: 80,
-              borderRadius: 10,
-              objectFit: "cover",
-            }}
-          />
-
-          <div style={{ flex: 1 }}>
-            <h4>{highlightText(item.name, searchQuery)}</h4>
-            <p>₹{item.price}</p>
-
-            {item.inStock === false && (
-              <span
-                style={{
-                  background: "#dc3545",
-                  color: "white",
-                  padding: "4px 8px",
-                  borderRadius: 6,
-                  fontSize: 12,
-                  fontWeight: 600,
-                  marginRight: 10,
-                }}
-              >
-                Out of Stock
-              </span>
-            )}
-
-            <button
-              onClick={() => handleAdd(item)}
-              disabled={!shopActive || item.inStock === false}
-              style={{
-                background:
-                  item.inStock === false
-                    ? "#6c757d"
-                    : addedId === item.id
-                    ? "#2ecc71"
-                    : "#28a745",
-                color: "white",
-                padding: "8px 14px",
-                borderRadius: 8,
-                border: "none",
-                cursor:
-                  !shopActive || item.inStock === false
-                    ? "not-allowed"
-                    : "pointer",
-                fontWeight: 600,
-              }}
-            >
-              {item.inStock === false
-                ? "Unavailable"
-                : addedId === item.id
-                ? "Added ✓"
-                : "Add to Cart"}
-            </button>
-          </div>
-        </div>
-          ))}
-        </div>
-      ))}
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "1fr 1fr",
+        gap: 16,
+        marginTop: 10,
+      }}
+    >
+      {items.map((item) => (
+  <MenuCard
+    key={item.id}
+    item={item}
+    shopActive={shopActive}
+    addedId={addedId}
+    handleAdd={handleAdd}
+  />
+))}
     </div>
-  );
+  </div>
+))}
+  </>
+)}
+ <FloatingCart
+  totalItems={totalItems}
+  cartTotal={cartTotal}
+  shopId={shopId}
+  search={search}
+/>
+</div>
+);
 }
